@@ -367,6 +367,67 @@ def render_data_management():
     
     st.markdown("---")
     
+    # Import observations
+    st.markdown("### 📥 Import Observations")
+    st.info("""
+    Import observations from CSV file. Required columns:
+    - date (YYYY-MM-DD format)
+    - class_code
+    - student_id
+    - measure_name
+    - value (1, 0, or -)
+    """)
+    
+    uploaded_obs = st.file_uploader(
+        "Choose observations CSV file",
+        type=['csv'],
+        key="import_observations"
+    )
+    
+    if uploaded_obs is not None:
+        try:
+            obs_df = pd.read_csv(uploaded_obs)
+            
+            # Validate columns
+            required_cols = ['date', 'class_code', 'student_id', 'measure_name', 'value']
+            missing_cols = [col for col in required_cols if col not in obs_df.columns]
+            
+            if missing_cols:
+                st.error(f"❌ Missing required columns: {', '.join(missing_cols)}")
+            else:
+                st.success(f"✅ CSV loaded: {len(obs_df)} observations found")
+                
+                # Show preview
+                st.dataframe(obs_df.head(10), use_container_width=True)
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    if st.button("✅ Import Observations", type="primary", key="confirm_import_obs"):
+                        # Convert date to proper format
+                        obs_df['date'] = pd.to_datetime(obs_df['date']).dt.strftime('%Y-%m-%d')
+                        
+                        # Convert to list of dicts for add_observations
+                        observations_list = obs_df.to_dict('records')
+                        
+                        # Import
+                        success = db.add_observations(observations_list)
+                        
+                        if success:
+                            st.success(f"✅ Imported {len(observations_list)} observations")
+                            st.balloons()
+                            st.rerun()
+                        else:
+                            st.error("❌ Error importing observations")
+                
+                with col2:
+                    st.caption(f"This will add {len(obs_df)} observations to the database")
+        
+        except Exception as e:
+            st.error(f"❌ Error reading CSV: {str(e)}")
+    
+    st.markdown("---")
+    
     # Clear data
     st.markdown("### 🗑️ Clear All Data")
     st.warning("⚠️ This will delete ALL students, classes, and observations. This cannot be undone!")
