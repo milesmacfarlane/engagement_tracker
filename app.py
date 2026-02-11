@@ -14,6 +14,18 @@ from pathlib import Path
 pages_dir = Path(__file__).parent / 'pages'
 sys.path.insert(0, str(pages_dir))
 
+# Import database module first to initialize tables
+import database as db
+
+# Initialize database tables on app startup (if not already initialized)
+if 'db_initialized' not in st.session_state:
+    try:
+        db.initialize_database()
+        st.session_state.db_initialized = True
+    except Exception as e:
+        st.error(f"Database initialization error: {str(e)}")
+        st.session_state.db_initialized = False
+
 # Import page modules
 import entry_log
 import student_dashboard
@@ -88,6 +100,22 @@ def main():
     with st.sidebar:
         st.image("https://via.placeholder.com/150x50/1F4788/FFFFFF?text=Engagement+Tracker", 
                 use_container_width=True)
+        
+        st.markdown("---")
+        
+        # Database health check
+        try:
+            engine = db.get_database_connection()
+            if engine:
+                with engine.connect() as conn:
+                    result = conn.execute(db.text("SELECT 1"))
+                    st.success("🟢 Database Online", icon="✅")
+            else:
+                st.error("🔴 Database Offline", icon="❌")
+        except Exception as e:
+            st.error("🔴 DB Connection Issue", icon="⚠️")
+            with st.expander("Error Details"):
+                st.code(str(e))
         
         st.markdown("---")
         
