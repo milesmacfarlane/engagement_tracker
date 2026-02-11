@@ -105,7 +105,7 @@ def main():
     # Sidebar navigation
 with st.sidebar:
     st.image("https://media.7oaks.org/media/Default/fgg/36/West20Kildonan20Logo.jpg", 
-             width=150)
+             width=50)
     
     st.markdown("---")
         
