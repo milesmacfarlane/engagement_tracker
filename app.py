@@ -103,11 +103,11 @@ def main():
     """Main application logic"""
     
     # Sidebar navigation
-    with st.sidebar:
-        st.image("https://media.7oaks.org/media/Default/fgg/36/West20Kildonan20Logo.jpg", 
-                use_container_width=True)
-        
-        st.markdown("---")
+     with st.sidebar:
+         st.image("https://media.7oaks.org/media/Default/fgg/36/West20Kildonan20Logo.jpg", 
+                  width=150)
+    
+         st.markdown("---")
         
 
         
