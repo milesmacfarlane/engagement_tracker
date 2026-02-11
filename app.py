@@ -109,12 +109,15 @@ def main():
         
         st.markdown("---")
         
-        # Database health check
+# Database health check
         try:
+            import database as db
+            from sqlalchemy import text
+            
             engine = db.get_database_connection()
             if engine:
                 with engine.connect() as conn:
-                    result = conn.execute(db.text("SELECT 1"))
+                    result = conn.execute(text("SELECT 1"))
                     st.success("🟢 Database Online", icon="✅")
             else:
                 st.error("🔴 Database Offline", icon="❌")
