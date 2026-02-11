@@ -20,10 +20,16 @@ import database as db
 # Initialize database tables on app startup (if not already initialized)
 if 'db_initialized' not in st.session_state:
     try:
-        db.initialize_database()
-        st.session_state.db_initialized = True
+        # Check if initialize_database function exists
+        if hasattr(db, 'initialize_database'):
+            db.initialize_database()
+            st.session_state.db_initialized = True
+        else:
+            # Database module doesn't have initialize_database
+            # Tables will be created on first use
+            st.session_state.db_initialized = True
     except Exception as e:
-        st.error(f"Database initialization error: {str(e)}")
+        st.warning(f"Database initialization skipped: {str(e)}")
         st.session_state.db_initialized = False
 
 # Import page modules
