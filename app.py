@@ -104,7 +104,7 @@ def main():
     
     # Sidebar navigation
     with st.sidebar:
-        st.image("https://via.placeholder.com/150x50/1F4788/FFFFFF?text=Engagement+Tracker", 
+        st.image("https://media.7oaks.org/media/Default/fgg/36/West20Kildonan20Logo.jpg", 
                 use_container_width=True)
         
         st.markdown("---")
