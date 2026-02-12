@@ -667,7 +667,7 @@ def get_engagement_correlation(observations_df, students_df):
             continue
         
         attendance_pct = calculate_attendance_rate(observations_df, student['student_id'])
-        achievement_pct = calculate_achievement_percentage(observations_df, student['student_id'])
+        achievement_pct = calculate_performance(observations_df, student_id=student['student_id'])[0]
         
         if attendance_pct is not None and achievement_pct is not None:
             student_metrics.append({
@@ -707,7 +707,7 @@ def get_class_engagement_distribution(observations_df, students_df):
     
     for _, student in students_df.iterrows():
         attendance_pct = calculate_attendance_rate(observations_df, student['student_id'])
-        achievement_pct = calculate_achievement_percentage(observations_df, student['student_id'])
+        achievement_pct = calculate_performance(observations_df, student_id=student['student_id'])[0]
         
         category, _, _, _ = classify_engagement_type(attendance_pct, achievement_pct)
         distribution[category] += 1
@@ -744,7 +744,7 @@ def get_engagement_insights(observations_df, students_df):
     
     for _, student in students_df.iterrows():
         attendance_pct = calculate_attendance_rate(observations_df, student['student_id'])
-        achievement_pct = calculate_achievement_percentage(observations_df, student['student_id'])
+        achievement_pct = calculate_performance(observations_df, student_id=student['student_id'])[0]
         
         if attendance_pct is not None and achievement_pct is not None:
             # Effective engagement
