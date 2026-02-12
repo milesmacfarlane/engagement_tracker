@@ -132,6 +132,48 @@ def generate_student_report_pdf(student_id, date_range='ALL', start_date=None, e
         elements.append(summary_table)
         elements.append(Spacer(1, 0.15*inch))
         
+        # ENGAGEMENT ANALYSIS (NEW)
+        elements.append(Paragraph("ENGAGEMENT ANALYSIS", heading_style))
+        
+        # Calculate engagement metrics
+        achievement_pct = utils.calculate_achievement_percentage(observations_df, student_id)
+        effective_engagement = utils.calculate_effective_engagement(attendance_rate, achievement_pct)
+        primary_barrier = utils.identify_primary_barrier(attendance_rate, achievement_pct)
+        category, emoji, description, intervention = utils.classify_engagement_type(attendance_rate, achievement_pct)
+        opportunity_lost = utils.calculate_opportunity_lost(attendance_rate, achievement_pct)
+        
+        engagement_data = [
+            ['Effective Engagement Score:', f"{effective_engagement:.1f}%", 'Primary Barrier:', primary_barrier],
+            ['Student Type:', category, 'Opportunity Lost:', f"{opportunity_lost:.1f}%"]
+        ]
+        
+        engagement_table = Table(engagement_data, colWidths=[1.8*inch, 1.5*inch, 1.8*inch, 1.5*inch])
+        engagement_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.85, 0.85, 0.85)),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ]))
+        elements.append(engagement_table)
+        elements.append(Spacer(1, 0.1*inch))
+        
+        # Pattern description and intervention
+        pattern_style = ParagraphStyle(
+            'Pattern',
+            parent=normal_style,
+            fontSize=9,
+            leading=11
+        )
+        
+        elements.append(Paragraph(f"<b>Pattern:</b> {description}", pattern_style))
+        elements.append(Spacer(1, 0.05*inch))
+        elements.append(Paragraph(f"<b>Recommended Intervention:</b> {intervention}", pattern_style))
+        elements.append(Spacer(1, 0.15*inch))
+        
         # Detailed Breakdown
         elements.append(Paragraph("ENGAGEMENT MEASURES - DETAILED BREAKDOWN", heading_style))
         
@@ -364,6 +406,68 @@ def generate_class_report_pdf(class_codes, date_range='ALL', start_date=None, en
         ]))
         elements.append(stats_table)
         elements.append(Spacer(1, 0.15*inch))
+        
+        # ENGAGEMENT PATTERNS (NEW)
+        elements.append(Paragraph("ENGAGEMENT PATTERNS & INTERVENTION PRIORITIES", heading_style))
+        
+        # Calculate engagement insights
+        insights = utils.get_engagement_insights(observations_df, class_students)
+        distribution = utils.get_class_engagement_distribution(observations_df, class_students)
+        
+        engagement_stats_data = [
+            ['Avg Effective Engagement:', f"{insights['avg_effective_engagement']:.1f}%", 
+             'Attendance-Achievement Link:', f"{insights['correlation']:.2f}"],
+            ['Present but Disengaged:', str(insights['present_but_disengaged_count']),
+             'Engaged but Absent:', str(insights['engaged_but_absent_count'])],
+            ['Avg Opportunity Lost:', f"{insights['opportunity_lost_avg']:.1f}%", '', '']
+        ]
+        
+        engagement_stats_table = Table(engagement_stats_data, colWidths=[2*inch, 1.5*inch, 2*inch, 1.5*inch])
+        engagement_stats_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.85, 0.85, 0.85)),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ]))
+        elements.append(engagement_stats_table)
+        elements.append(Spacer(1, 0.1*inch))
+        
+        # Student type distribution
+        type_dist_data = [['Student Type', 'Count', 'Description']]
+        
+        type_descriptions = {
+            'Exemplary': 'Present and engaged',
+            'Present but Disengaged': 'Attending but not engaging',
+            'Engaged but Absent': 'Engaged when present, poor attendance',
+            'Critical Intervention Needed': 'Both attendance and engagement issues',
+            'Developing - Focus Engagement': 'Moderate attendance, needs engagement',
+            'Developing - Focus Attendance': 'Shows engagement, needs attendance'
+        }
+        
+        for category, count in distribution.items():
+            if count > 0 and category != 'Unknown':
+                desc = type_descriptions.get(category, category)
+                type_dist_data.append([category, str(count), desc])
+        
+        if len(type_dist_data) > 1:  # Has data beyond header
+            type_table = Table(type_dist_data, colWidths=[2.2*inch, 0.7*inch, 4.1*inch])
+            type_table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.8, 0.8, 0.8)),
+                ('ALIGN', (1, 0), (1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ]))
+            elements.append(type_table)
+            elements.append(Spacer(1, 0.15*inch))
         
         # Students by Performance Band
         elements.append(Paragraph("STUDENTS BY PERFORMANCE BAND", heading_style))

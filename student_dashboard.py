@@ -141,6 +141,63 @@ def render():
     
     st.markdown("---")
     
+    # Section 1.5: Engagement Analysis (NEW)
+    st.markdown("### 🎯 Engagement Analysis")
+    st.caption("Understanding the relationship between attendance and achievement")
+    
+    # Calculate new engagement metrics
+    achievement_pct = utils.calculate_achievement_percentage(observations_df, selected_student_id)
+    effective_engagement = utils.calculate_effective_engagement(attendance_rate, achievement_pct)
+    primary_barrier = utils.identify_primary_barrier(attendance_rate, achievement_pct)
+    category, emoji, description, intervention = utils.classify_engagement_type(attendance_rate, achievement_pct)
+    opportunity_lost = utils.calculate_opportunity_lost(attendance_rate, achievement_pct)
+    
+    # Display engagement metrics
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric(
+            "Effective Engagement Score",
+            f"{effective_engagement:.1f}%",
+            delta=None,
+            help="Combined score accounting for both attendance and achievement (Attendance × Achievement / 100)"
+        )
+    
+    with col2:
+        # Color code primary barrier
+        if primary_barrier == "Engagement":
+            barrier_color = "🟡"
+        elif primary_barrier == "Attendance":
+            barrier_color = "🔴"
+        else:
+            barrier_color = "🟢"
+        
+        st.metric(
+            "Primary Barrier",
+            f"{barrier_color} {primary_barrier}",
+            delta=None,
+            help="Whether attendance or engagement is the main barrier to success"
+        )
+    
+    with col3:
+        st.metric(
+            "Opportunity Lost",
+            f"{opportunity_lost:.1f}%",
+            delta=None,
+            help="Percentage of potential engagement lost due to absence"
+        )
+    
+    # Student type classification
+    st.markdown(f"""
+    <div style='padding: 1rem; background-color: #f0f2f6; border-radius: 0.5rem; border-left: 4px solid #1f4788;'>
+        <h4>{emoji} Student Type: {category}</h4>
+        <p><strong>Pattern:</strong> {description}</p>
+        <p><strong>Recommended Intervention:</strong> {intervention}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
     # Section 2: Measure-by-Measure Breakdown
     st.markdown("### 📋 Measure-by-Measure Breakdown")
     
