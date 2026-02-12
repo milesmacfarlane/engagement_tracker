@@ -136,7 +136,7 @@ def generate_student_report_pdf(student_id, date_range='ALL', start_date=None, e
         elements.append(Paragraph("ENGAGEMENT ANALYSIS", heading_style))
         
         # Calculate engagement metrics
-        achievement_pct = utils.calculate_achievement_percentage(observations_df, student_id)
+        achievement_pct, _, _, _, _ = utils.calculate_performance(observations_df, student_id=student_id)
         effective_engagement = utils.calculate_effective_engagement(attendance_rate, achievement_pct)
         primary_barrier = utils.identify_primary_barrier(attendance_rate, achievement_pct)
         category, emoji, description, intervention = utils.classify_engagement_type(attendance_rate, achievement_pct)
