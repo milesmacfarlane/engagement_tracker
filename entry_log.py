@@ -39,7 +39,7 @@ def render():
         
         # Date input with more prominent styling
         st.markdown("### 📅 Select Observation Date")
-        st.warning("⚠️ **Important:** Select the date for these observations carefully. Existing data for this date will be overwritten.")
+        st.info("💡 **Tip:** You can load existing data to view or update individual students without affecting others.")
         
         observation_date = st.date_input(
             "Observation Date",
@@ -94,10 +94,115 @@ def render():
         lambda sid: utils.get_days_since_last_observation(observations_df, sid)
     )
     
-    # Sort by days since last observation (those needing observation first)
-    class_students = class_students.sort_values('last_obs_date', ascending=False, na_position='first')
+    st.markdown("---")
+    
+    # Load existing data section
+    st.markdown("### 📂 Existing Data for This Date")
+    
+    # Check if data exists for selected date/class
+    existing_obs_for_date = db.load_observations()
+    if len(existing_obs_for_date) > 0:
+        existing_mask = (pd.to_datetime(existing_obs_for_date['date']).dt.date == observation_date) & \
+                       (existing_obs_for_date['class_code'] == selected_class)
+        existing_data = existing_obs_for_date[existing_mask]
+        
+        if len(existing_data) > 0:
+            students_with_data = existing_data['student_id'].nunique()
+            total_observations = len(existing_data)
+            
+            st.info(f"""
+            📊 **Existing data found:**
+            - {students_with_data} students have observations
+            - {total_observations} total observations recorded
+            - Date: {observation_date.strftime('%Y-%m-%d (%A)')}
+            - Class: {selected_class}
+            """)
+            
+            col_load1, col_load2 = st.columns([1, 3])
+            
+            with col_load1:
+                if st.button("📥 Load Existing Data", type="primary", help="Load saved observations into the form"):
+                    # Initialize entry grid if not exists
+                    if 'entry_grid' not in st.session_state:
+                        st.session_state.entry_grid = {}
+                    if 'attendance_status' not in st.session_state:
+                        st.session_state.attendance_status = {}
+                    
+                    # Load existing observations into the grid
+                    loaded_count = 0
+                    for _, obs in existing_data.iterrows():
+                        key = f"{obs['student_id']}_{obs['measure_name']}_{observation_date}"
+                        st.session_state.entry_grid[key] = obs['value']
+                        loaded_count += 1
+                        
+                        # Set attendance status based on observations
+                        if obs['value'] == '-':
+                            st.session_state.attendance_status[obs['student_id']] = 'absent'
+                        elif obs['student_id'] not in st.session_state.attendance_status:
+                            st.session_state.attendance_status[obs['student_id']] = 'present'
+                    
+                    st.success(f"✅ Loaded {loaded_count} observations for {students_with_data} students")
+                    st.rerun()
+            
+            with col_load2:
+                st.caption("Click to load existing data into the form for viewing or editing")
+            
+            # Show summary of which students have data
+            with st.expander("👥 Students with existing data", expanded=False):
+                students_list = existing_data['student_id'].unique()
+                students_names = []
+                for sid in students_list:
+                    student_name = class_students[class_students['student_id'] == sid]['name'].values
+                    if len(student_name) > 0:
+                        students_names.append(f"{sid} - {student_name[0]}")
+                    else:
+                        students_names.append(sid)
+                
+                st.markdown("**Students with observations:**")
+                for name in sorted(students_names):
+                    st.markdown(f"- {name}")
+        else:
+            st.success(f"""
+            ✅ **No existing data for this date**
+            
+            This is a new observation session for:
+            - Date: {observation_date.strftime('%Y-%m-%d (%A)')}
+            - Class: {selected_class}
+            
+            You can enter observations below.
+            """)
+    else:
+        st.success(f"""
+        ✅ **No observations in database yet**
+        
+        This is your first observation session!
+        """)
     
     st.markdown("---")
+    
+    # Sort selector
+    col_sort1, col_sort2 = st.columns([1, 3])
+    with col_sort1:
+        sort_option = st.selectbox(
+            "Sort students by:",
+            options=["Name (A-Z)", "Name (Z-A)", "Student ID", "Last Observation"],
+            index=0,  # Default to alphabetical
+            key="student_sort"
+        )
+    
+    with col_sort2:
+        st.caption("Choose how to order the student list")
+    
+    # Apply sorting based on selection
+    if sort_option == "Name (A-Z)":
+        class_students = class_students.sort_values('name', ascending=True)
+    elif sort_option == "Name (Z-A)":
+        class_students = class_students.sort_values('name', ascending=False)
+    elif sort_option == "Student ID":
+        class_students = class_students.sort_values('student_id', ascending=True)
+    elif sort_option == "Last Observation":
+        class_students = class_students.sort_values('last_obs_date', ascending=False, na_position='first')
+    
     st.subheader(f"Students in {selected_class} ({len(class_students)} students)")
     
     # Show recent observation dates for this class
@@ -116,7 +221,7 @@ def render():
                     
                     # Highlight if it's the currently selected date
                     if obs_date == observation_date:
-                        st.warning(f"⚠️ **{date_str}** - {students_observed} students (CURRENTLY SELECTED - will be overwritten!)")
+                        st.warning(f"⚠️ **{date_str}** - {students_observed} students (CURRENTLY SELECTED)")
                     else:
                         st.info(f"✓ {date_str} - {students_observed} students")
     
