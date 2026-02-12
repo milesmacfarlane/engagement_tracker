@@ -355,12 +355,14 @@ def render():
 
 
 def save_observations(observation_date, class_code, class_students):
-    """Save observations to database with overwrite protection"""
+    """Save observations to database with smart update/add logic"""
     
     observations_to_save = []
     entry_count = 0
+    students_with_entries = set()
     
     for idx, student in class_students.iterrows():
+        student_has_data = False
         for measure in utils.ENGAGEMENT_MEASURES:
             key = f"{student['student_id']}_{measure}_{observation_date}"
             value = st.session_state.entry_grid.get(key, "")
@@ -375,6 +377,10 @@ def save_observations(observation_date, class_code, class_students):
                     'value': value
                 })
                 entry_count += 1
+                student_has_data = True
+        
+        if student_has_data:
+            students_with_entries.add(student['student_id'])
     
     if entry_count == 0:
         st.warning("⚠️ No observations to save. Please enter at least one observation.")
@@ -386,49 +392,109 @@ def save_observations(observation_date, class_code, class_students):
                    (existing_obs['class_code'] == class_code)
     
     if existing_mask.any():
-        # Count affected students
-        existing_students = existing_obs[existing_mask]['student_id'].nunique()
+        # Check which students from entries already have data
+        existing_student_ids = set(existing_obs[existing_mask]['student_id'].unique())
+        students_to_overwrite = students_with_entries.intersection(existing_student_ids)
+        students_to_add = students_with_entries - existing_student_ids
+        
+        # Count affected records
         existing_total = existing_mask.sum()
+        total_students_in_existing = len(existing_student_ids)
         
-        st.error(f"""
-        ### ⚠️ OVERWRITE WARNING
-        
-        **Existing data found:**
-        - {existing_students} students
-        - {existing_total} observation records
-        - Date: {observation_date}
-        - Class: {class_code}
-        
-        **This data will be PERMANENTLY DELETED and replaced with your new entries.**
-        
-        Are you sure you want to continue?
-        """)
-        
-        # Create two columns for the confirmation buttons
-        col1, col2, col3 = st.columns([1, 1, 2])
-        
-        with col1:
-            if st.button("✅ Yes, Overwrite", type="primary", key="confirm_overwrite"):
-                # Delete existing observations
-                db.delete_observations(observation_date, class_code)
-                
-                # Save new observations
-                db.add_observations(observations_to_save)
-                
-                st.success(f"✅ Overwrote existing data and saved {entry_count} new observations for {class_code} on {observation_date}")
-                
-                # Clear the grid
-                st.session_state.entry_grid = {}
-                st.session_state.attendance_status = {}
-                st.balloons()
-        
-        with col2:
-            if st.button("❌ Cancel", key="cancel_overwrite"):
-                st.info("Save cancelled. Your data was NOT saved.")
-                return
-        
-        # Stop here - wait for user to click a button
-        st.stop()
+        # Determine save mode
+        if len(students_to_add) > 0 and len(students_to_overwrite) == 0:
+            # ADDITIVE MODE - only adding new students, not touching existing
+            st.info(f"""
+            ### ➕ Adding New Student Data
+            
+            **Adding observations for:**
+            - {len(students_to_add)} new student(s)
+            - Date: {observation_date}
+            - Class: {class_code}
+            
+            **Existing data for {total_students_in_existing} other students will be preserved.**
+            """)
+            
+            # Save new observations without deleting anything
+            db.add_observations(observations_to_save)
+            
+            st.success(f"✅ Added {entry_count} observations for {len(students_to_add)} new student(s)")
+            
+            # Clear the grid
+            st.session_state.entry_grid = {}
+            st.session_state.attendance_status = {}
+            st.balloons()
+            
+        else:
+            # UPDATE/OVERWRITE MODE - modifying existing students
+            st.error(f"""
+            ### ⚠️ UPDATE WARNING
+            
+            **This will update/overwrite data for:**
+            - {len(students_to_overwrite)} student(s) you entered
+            
+            **Data for {total_students_in_existing - len(students_to_overwrite)} other students will be preserved.**
+            
+            **Students affected:** {', '.join(students_to_overwrite)}
+            
+            Are you sure you want to continue?
+            """)
+            
+            # Create confirmation buttons
+            col1, col2, col3 = st.columns([1, 1, 2])
+            
+            with col1:
+                if st.button("✅ Yes, Update", type="primary", key="confirm_update"):
+                    # Delete ONLY the students we're updating
+                    for student_id in students_to_overwrite:
+                        student_mask = existing_mask & (existing_obs['student_id'] == student_id)
+                        # Remove these specific records
+                        observations_to_keep = existing_obs[~student_mask]
+                    
+                    # Delete observations for ONLY the students we're updating
+                    existing_obs_filtered = existing_obs[existing_mask]
+                    students_to_delete_mask = existing_obs_filtered['student_id'].isin(students_to_overwrite)
+                    
+                    if students_to_delete_mask.any():
+                        # This is a workaround - we need to delete by student
+                        for student_id in students_to_overwrite:
+                            # Delete observations for this specific student on this date/class
+                            obs_to_remove = existing_obs[
+                                (pd.to_datetime(existing_obs['date']).dt.date == observation_date) & 
+                                (existing_obs['class_code'] == class_code) &
+                                (existing_obs['student_id'] == student_id)
+                            ]
+                            # Note: This is a limitation - we'd need a delete_student_observations function
+                            # For now, we'll do a full delete and re-add all
+                    
+                    # WORKAROUND: Delete all observations for this date/class, then re-add
+                    # Keep observations we want to preserve
+                    observations_to_keep = existing_obs[~existing_mask].to_dict('records')
+                    observations_to_keep_for_date = existing_obs[
+                        existing_mask & ~existing_obs['student_id'].isin(students_to_overwrite)
+                    ].to_dict('records')
+                    
+                    # Delete all for this date/class
+                    db.delete_observations(observation_date, class_code)
+                    
+                    # Re-add what we want to keep plus new data
+                    all_observations = observations_to_keep_for_date + observations_to_save
+                    db.add_observations(all_observations)
+                    
+                    st.success(f"✅ Updated {len(students_to_overwrite)} student(s). Other data preserved.")
+                    
+                    # Clear the grid
+                    st.session_state.entry_grid = {}
+                    st.session_state.attendance_status = {}
+                    st.balloons()
+            
+            with col2:
+                if st.button("❌ Cancel", key="cancel_update"):
+                    st.info("Save cancelled. No changes made.")
+                    return
+            
+            # Stop here - wait for user to click a button
+            st.stop()
     
     else:
         # No existing data - save directly
