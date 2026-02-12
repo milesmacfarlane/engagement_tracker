@@ -10,9 +10,7 @@ import streamlit as st
 import sys
 from pathlib import Path
 
-# Add pages directory to path
-pages_dir = Path(__file__).parent / 'pages'
-sys.path.insert(0, str(pages_dir))
+# Page modules are in root directory
 
 # Import database module first to initialize tables
 import database as db
