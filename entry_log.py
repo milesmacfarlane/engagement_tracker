@@ -225,16 +225,37 @@ def render():
                     else:
                         st.info(f"✓ {date_str} - {students_observed} students")
     
-    # Info box
-    st.info("""
-    **Entry Instructions:**
-    - Select **P** (Present) or **A** (Absent) for each student
-    - If PRESENT: Type **1** (observed), **0** (not observed), or **-** (not applicable) in each measure field
-    - If ABSENT: All measures automatically filled with **-**
-    - Press **Tab** to move to next field (auto-advances after typing)
-    - Press **Enter** to move down to same measure for next student
-    - Change from ABSENT to PRESENT clears the **-** values
-    """)
+    # Instructions in expandable section
+    with st.expander("💡 How to Use Quick Entry", expanded=False):
+        st.markdown("""
+        ### Keyboard Shortcuts & Navigation
+        
+        **Attendance:**
+        - Click **P** (Present) or **A** (Absent) for each student
+        - Absent students automatically get **-** in all measures
+        
+        **Entering Observations (for Present students):**
+        - **1** = Behavior observed ✅
+        - **0** = Behavior not observed ❌
+        - **-** = Not applicable / Unable to observe
+        
+        **Keyboard Navigation:**
+        - **Tab** → Move to next field (right)
+        - **Shift+Tab** → Move to previous field (left)
+        - **Enter** → Move down to same measure for next student
+        - Auto-advances after typing 1, 0, or -
+        
+        **Tips:**
+        - Load existing data to view/edit previous observations
+        - Only enter data for students you're adding/updating
+        - Sort students by name for easier navigation
+        - Use Tab key to quickly move through the grid
+        
+        **Saving:**
+        - **New date** → Saves all entered observations
+        - **Existing date + new students** → Adds them without affecting others
+        - **Existing date + existing students** → Updates only those students (shows confirmation)
+        """)
     
     # Initialize session state for entry grid
     if 'entry_grid' not in st.session_state:
