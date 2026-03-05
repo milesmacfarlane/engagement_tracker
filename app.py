@@ -9,10 +9,7 @@ across 9 key measures using a 1/0/- observation system.
 import streamlit as st
 import sys
 from pathlib import Path
-
-# Add pages directory to path
-pages_dir = Path(__file__).parent / 'pages'
-sys.path.insert(0, str(pages_dir))
+from sqlalchemy import text
 
 # Import database module first to initialize tables
 import database as db
@@ -114,7 +111,7 @@ def main():
             engine = db.get_database_connection()
             if engine:
                 with engine.connect() as conn:
-                    result = conn.execute(db.text("SELECT 1"))
+                    result = conn.execute(text("SELECT 1"))
                     st.success("🟢 Database Online", icon="✅")
             else:
                 st.error("🔴 Database Offline", icon="❌")
@@ -141,8 +138,6 @@ def main():
         st.markdown("---")
         
         # Quick stats in sidebar
-        import database as db
-        
         students_df = db.load_students()
         classes_df = db.load_classes()
         observations_df = db.load_observations()
