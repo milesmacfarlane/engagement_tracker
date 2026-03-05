@@ -179,8 +179,8 @@ def generate_student_report_pdf(student_id, date_range='ALL', start_date=None, e
         
         breakdown = utils.get_student_measure_breakdown(student_obs, student_id)
         
-        # Table header
-        measure_data = [['Engagement Measure', 'Total', '1s', '0s', '-', 'Valid', 'Perf %', 'Band']]
+        # Table header - updated labels
+        measure_data = [['Engagement Measure', 'Total', '1s', '0s', 'N/A', 'Valid', 'Perf %', 'Band']]
         
         # Add data rows
         for item in breakdown:
@@ -189,18 +189,19 @@ def generate_student_report_pdf(student_id, date_range='ALL', start_date=None, e
                 item['Measure'],
                 str(item['Total']),
                 str(item['1s (Observed)']),
-                str(item['0s (Not Observed)']),
-                str(item['- (Absent)']),
+                str(item['0s (Not Observed)']),  # Now includes absences
+                str(item['- (N/A)']),  # Only "didn't apply"
                 str(item['Valid Observations']),
                 perf_str,
                 item['Band']
             ])
         
-        measure_table = Table(measure_data, colWidths=[2.2*inch, 0.5*inch, 0.4*inch, 0.4*inch, 0.4*inch, 0.5*inch, 0.6*inch, 1.6*inch])
+        # Updated column widths for longer measure names (5 measures now)
+        measure_table = Table(measure_data, colWidths=[2.5*inch, 0.45*inch, 0.4*inch, 0.4*inch, 0.4*inch, 0.5*inch, 0.6*inch, 1.5*inch])
         measure_table.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('FONTSIZE', (0, 0), (-1, -1), 7),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
             ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.8, 0.8, 0.8)),
             ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
