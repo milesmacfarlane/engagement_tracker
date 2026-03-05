@@ -159,40 +159,11 @@ def main():
         st.caption("v2.0 Migration")
         
         if st.button("🔄 Migrate Dashes → Zeros", help="Convert all dash (-) values to zeros (0) for v2.0 philosophy"):
-            st.markdown("---")
-            st.warning("⚠️ **Running Migration Script**")
-            st.info("This will convert all dash (-) values to zeros (0) in the database.")
+            # Import inline migration
+            import migration_inline
             
-            try:
-                import subprocess
-                import sys
-                
-                # Run the migration script
-                result = subprocess.run(
-                    [sys.executable, 'migrate_dashes_to_zeros.py'],
-                    capture_output=True,
-                    text=True,
-                    timeout=120  # 2 minute timeout
-                )
-                
-                # Display output
-                if result.stdout:
-                    st.text_area("Migration Output", result.stdout, height=400)
-                
-                if result.returncode == 0:
-                    st.success("✅ Migration completed successfully!")
-                    st.info("Please refresh the page to see updated scores.")
-                else:
-                    st.error("❌ Migration failed")
-                    if result.stderr:
-                        st.text_area("Error Details", result.stderr, height=200)
-                        
-            except subprocess.TimeoutExpired:
-                st.error("❌ Migration timed out (took longer than 2 minutes)")
-            except FileNotFoundError:
-                st.error("❌ Migration script not found. Make sure 'migrate_dashes_to_zeros.py' is uploaded to GitHub.")
-            except Exception as e:
-                st.error(f"❌ Error running migration: {str(e)}")
+            # Run migration inline
+            migration_inline.run_migration_inline(db, st)
         
         st.markdown("---")
         
