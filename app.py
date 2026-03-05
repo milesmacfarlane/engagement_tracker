@@ -10,7 +10,9 @@ import streamlit as st
 import sys
 from pathlib import Path
 
-# Page modules are in root directory
+# Add pages directory to path
+pages_dir = Path(__file__).parent / 'pages'
+sys.path.insert(0, str(pages_dir))
 
 # Import database module first to initialize tables
 import database as db
@@ -102,12 +104,26 @@ def main():
     
     # Sidebar navigation
     with st.sidebar:
-        st.image("https://media.7oaks.org/media/Default/fgg/36/West20Kildonan20Logo.jpg",
-                width=100)
-    
+        st.image("https://via.placeholder.com/150x50/1F4788/FFFFFF?text=Engagement+Tracker", 
+                use_container_width=True)
+        
         st.markdown("---")
         
-
+        # Database health check
+        try:
+            engine = db.get_database_connection()
+            if engine:
+                with engine.connect() as conn:
+                    result = conn.execute(db.text("SELECT 1"))
+                    st.success("🟢 Database Online", icon="✅")
+            else:
+                st.error("🔴 Database Offline", icon="❌")
+        except Exception as e:
+            st.error("🔴 DB Connection Issue", icon="⚠️")
+            with st.expander("Error Details"):
+                st.code(str(e))
+        
+        st.markdown("---")
         
         # Navigation menu
         page = st.radio(
@@ -140,6 +156,48 @@ def main():
             st.metric("Classes", len(classes_df))
         
         st.metric("Total Observations", len(observations_df))
+        
+        st.markdown("---")
+        
+        # TEMPORARY: Migration button for v2.0
+        st.markdown("### 🔧 Admin Tools")
+        st.caption("v2.0 Migration")
+        
+        if st.button("🔄 Migrate Dashes → Zeros", help="Convert all dash (-) values to zeros (0) for v2.0 philosophy"):
+            st.markdown("---")
+            st.warning("⚠️ **Running Migration Script**")
+            st.info("This will convert all dash (-) values to zeros (0) in the database.")
+            
+            try:
+                import subprocess
+                import sys
+                
+                # Run the migration script
+                result = subprocess.run(
+                    [sys.executable, 'migrate_dashes_to_zeros.py'],
+                    capture_output=True,
+                    text=True,
+                    timeout=120  # 2 minute timeout
+                )
+                
+                # Display output
+                if result.stdout:
+                    st.text_area("Migration Output", result.stdout, height=400)
+                
+                if result.returncode == 0:
+                    st.success("✅ Migration completed successfully!")
+                    st.info("Please refresh the page to see updated scores.")
+                else:
+                    st.error("❌ Migration failed")
+                    if result.stderr:
+                        st.text_area("Error Details", result.stderr, height=200)
+                        
+            except subprocess.TimeoutExpired:
+                st.error("❌ Migration timed out (took longer than 2 minutes)")
+            except FileNotFoundError:
+                st.error("❌ Migration script not found. Make sure 'migrate_dashes_to_zeros.py' is uploaded to GitHub.")
+            except Exception as e:
+                st.error(f"❌ Error running migration: {str(e)}")
         
         st.markdown("---")
         
