@@ -4,18 +4,45 @@ Utility functions for engagement tracking calculations
 import pandas as pd
 from datetime import datetime, timedelta
 
-# 9 Engagement Measures
+# 5 Engagement Measures (Updated)
 ENGAGEMENT_MEASURES = [
     "Time on Task",
     "Asked/Answered/Shared",
-    "Work Completed/Ready",
+    "Engaged with Content and Others",
     "Materials/Organized",
-    "Helping/Asking for Help",
-    "Asks for Clarification",
-    "Check-ins with Teacher",
-    "Asks for Ways to Improve",
-    "In-class Work Completed"
+    "Seeks Teacher Support"
 ]
+
+# Mapping from old 9 measures to new 5 measures (for historical data)
+MEASURE_MAPPING = {
+    # New measure names (stay as-is)
+    "Time on Task": "Time on Task",
+    "Asked/Answered/Shared": "Asked/Answered/Shared",
+    "Engaged with Content and Others": "Engaged with Content and Others",
+    "Materials/Organized": "Materials/Organized",
+    "Seeks Teacher Support": "Seeks Teacher Support",
+    
+    # Old measure names (map to new)
+    "In-class Work Completed": "Time on Task",
+    "Work Completed/Ready": "Engaged with Content and Others",
+    "Helping/Asking for Help": "Engaged with Content and Others",
+    "Asks for Clarification": "Seeks Teacher Support",
+    "Check-ins with Teacher": "Seeks Teacher Support",
+    "Asks for Ways to Improve": "Seeks Teacher Support"
+}
+
+
+def normalize_measure_name(measure_name):
+    """
+    Map old measure names to new measure names for backward compatibility
+    
+    Args:
+        measure_name: Original measure name from database
+    
+    Returns:
+        str: Normalized measure name
+    """
+    return MEASURE_MAPPING.get(measure_name, measure_name)
 
 # Performance Band Criteria
 PERFORMANCE_BANDS = [
@@ -44,13 +71,18 @@ def calculate_performance(observations_df, student_id=None, measure=None):
     """
     Calculate performance % for observations
     
+    NEW BEHAVIOR (v2.0):
+    - Absent students get '0' values (counted against achievement)
+    - '-' values mean "didn't apply that day" (not counted)
+    - Achievement % = 1s / (1s + 0s) where 0s include absent days
+    
     Args:
         observations_df: DataFrame with observations
         student_id: Optional filter by student
         measure: Optional filter by measure
     
     Returns:
-        tuple: (percentage, ones_count, zeros_count, absent_count, valid_count)
+        tuple: (percentage, ones_count, zeros_count, not_applicable_count, valid_count)
     """
     df = observations_df.copy()
     
@@ -58,19 +90,25 @@ def calculate_performance(observations_df, student_id=None, measure=None):
         df = df[df['student_id'] == student_id]
     
     if measure is not None:
-        df = df[df['measure_name'] == measure]
+        # Normalize measure name for backward compatibility
+        normalized_measure = normalize_measure_name(measure)
+        # Get all observations that map to this measure
+        df = df[df['measure_name'].apply(normalize_measure_name) == normalized_measure]
     
     if len(df) == 0:
         return None, 0, 0, 0, 0
     
     ones = len(df[df['value'] == '1'])
-    zeros = len(df[df['value'] == '0'])
-    absent = len(df[df['value'] == '-'])
-    valid = ones + zeros
+    zeros = len(df[df['value'] == '0'])  # Now includes absences
+    not_applicable = len(df[df['value'] == '-'])  # Only for "didn't apply"
+    valid = ones + zeros  # Zeros now count (absences are zeros)
     
     if valid == 0:
         percentage = None
     else:
+        percentage = (ones / valid) * 100
+    
+    return percentage, ones, zeros, not_applicable, valid
         percentage = (ones / valid) * 100
     
     return percentage, ones, zeros, absent, valid
@@ -246,6 +284,7 @@ def validate_observation_value(value):
 def get_student_measure_breakdown(observations_df, student_id):
     """
     Get measure-by-measure breakdown for a student
+    Groups historical 9-measure data into new 5-measure structure
     
     Args:
         observations_df: DataFrame with observations
@@ -257,19 +296,19 @@ def get_student_measure_breakdown(observations_df, student_id):
     breakdown = []
     
     for measure in ENGAGEMENT_MEASURES:
-        perf, ones, zeros, absent, valid = calculate_performance(
+        perf, ones, zeros, not_applicable, valid = calculate_performance(
             observations_df, student_id=student_id, measure=measure
         )
         
-        # Total observations for this measure (not used for absence count)
-        total = ones + zeros + absent
+        # Total observations for this measure
+        total = ones + zeros + not_applicable
         
         breakdown.append({
             'Measure': measure,
             'Total': total,
             '1s (Observed)': ones,
-            '0s (Not Observed)': zeros,
-            '- (Absent)': absent,
+            '0s (Not Observed)': zeros,  # Now includes absences
+            '- (N/A)': not_applicable,  # Only "didn't apply"
             'Valid Observations': valid,
             'Performance %': perf,
             'Band': get_performance_band(perf)[0],
@@ -283,6 +322,10 @@ def get_days_absent(observations_df, student_id):
     """
     Calculate number of days student was absent
     
+    NEW BEHAVIOR (v2.0):
+    A day is counted as absent if ALL observed measures for that day are '0'
+    (since absent students now get 0s, not dashes)
+    
     Args:
         observations_df: DataFrame with observations
         student_id: Student ID
@@ -295,10 +338,15 @@ def get_days_absent(observations_df, student_id):
     if len(student_obs) == 0:
         return 0
     
-    # Get unique dates where ANY observation was marked as absent
-    absent_dates = student_obs[student_obs['value'] == '-']['date'].unique()
+    # Group by date and check if ALL observations are 0 (indicating absence)
+    absent_days = 0
+    for date in student_obs['date'].unique():
+        date_obs = student_obs[student_obs['date'] == date]
+        # If all values for this date are '0', student was absent
+        if all(date_obs['value'] == '0'):
+            absent_days += 1
     
-    return len(absent_dates)
+    return absent_days
 
 
 def get_total_observation_days(observations_df, student_id):
