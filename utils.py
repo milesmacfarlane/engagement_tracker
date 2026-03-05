@@ -109,9 +109,6 @@ def calculate_performance(observations_df, student_id=None, measure=None):
         percentage = (ones / valid) * 100
     
     return percentage, ones, zeros, not_applicable, valid
-        percentage = (ones / valid) * 100
-    
-    return percentage, ones, zeros, absent, valid
 
 
 def get_performance_band(percentage):
