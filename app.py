@@ -153,19 +153,7 @@ def main():
         st.metric("Total Observations", len(observations_df))
         
         st.markdown("---")
-        
-        # TEMPORARY: Migration button for v2.0
-        st.markdown("### 🔧 Admin Tools")
-        st.caption("v2.0 Migration")
-        
-        if st.button("🔄 Migrate Dashes → Zeros", help="Convert all dash (-) values to zeros (0) for v2.0 philosophy"):
-            # Import inline migration
-            import migration_inline
-            
-            # Run migration inline
-            migration_inline.run_migration_inline(db, st)
-        
-        st.markdown("---")
+
         
         # Help section
         with st.expander("ℹ️ About"):
