@@ -232,12 +232,12 @@ def render():
         
         **Attendance:**
         - Click **P** (Present) or **A** (Absent) for each student
-        - Absent students automatically get **-** in all measures
+        - Absent students automatically get **0** in all measures (absence = no engagement)
         
         **Entering Observations (for Present students):**
         - **1** = Behavior observed ✅
         - **0** = Behavior not observed ❌
-        - **-** = Not applicable / Unable to observe
+        - **-** = Not applicable / Measure didn't apply that day
         
         **Keyboard Navigation:**
         - **Tab** → Move to next field (right)
@@ -250,6 +250,7 @@ def render():
         - Only enter data for students you're adding/updating
         - Sort students by name for easier navigation
         - Use Tab key to quickly move through the grid
+        - Use **-** only for measures that didn't apply (e.g., no group work that day)
         
         **Saving:**
         - **New date** → Saves all entered observations
@@ -267,17 +268,13 @@ def render():
     # Display entry grid with headers
     st.markdown("### Observation Entry Grid")
     
-    # Measure abbreviations for column headers
+    # Measure abbreviations for column headers (5 measures - more spacious)
     measure_abbrev = {
-        "Time on Task": "Time",
-        "Asked/Answered/Shared": "Ask/Ans",
-        "Work Completed/Ready": "Work",
+        "Time on Task": "Time on Task",
+        "Asked/Answered/Shared": "Ask/Ans/Share",
+        "Engaged with Content and Others": "Content & Others",
         "Materials/Organized": "Materials",
-        "Helping/Asking for Help": "Help",
-        "Asks for Clarification": "Clarify",
-        "Check-ins with Teacher": "Check-in",
-        "Asks for Ways to Improve": "Improve",
-        "In-class Work Completed": "Complete"
+        "Seeks Teacher Support": "Teacher Support"
     }
     
     # Create sticky header with full measure names
@@ -295,20 +292,20 @@ def render():
     .measure-header table {
         width: 100%;
         font-weight: bold;
-        font-size: 0.8em;
+        font-size: 0.85em;
     }
     </style>
     """, unsafe_allow_html=True)
     
-    # Header row with full measure names
-    header_cols = st.columns([2, 1, 1, 0.7] + [1] * len(utils.ENGAGEMENT_MEASURES))
+    # Header row - more spacious with 5 measures
+    header_cols = st.columns([2.5, 1, 1, 0.8] + [1.5] * len(utils.ENGAGEMENT_MEASURES))
     header_cols[0].markdown("**Student**")
     header_cols[1].markdown("**Last Obs**")
     header_cols[2].markdown("**Status**")
     header_cols[3].markdown("**Attend.**")
     
     for i, measure in enumerate(utils.ENGAGEMENT_MEASURES):
-        header_cols[4 + i].markdown(f"**{measure_abbrev.get(measure, measure[:8])}**", 
+        header_cols[4 + i].markdown(f"**{measure_abbrev.get(measure, measure)}**", 
                                      help=measure)
     
     st.markdown("---")
@@ -334,8 +331,8 @@ def render():
                                                  help=measure)
                 st.markdown("---")
             
-            # Create columns for this student row
-            cols = st.columns([2, 1, 1, 0.7] + [1] * len(utils.ENGAGEMENT_MEASURES))
+            # Create columns for this student row - more spacious with 5 measures
+            cols = st.columns([2.5, 1, 1, 0.8] + [1.5] * len(utils.ENGAGEMENT_MEASURES))
             
             # Student name
             cols[0].markdown(f"**{student['name']}**")
@@ -376,14 +373,14 @@ def render():
                 # Get current value from session state
                 current_value = st.session_state.entry_grid.get(key, "")
                 
-                # If attendance is A (Absent), fill with "-"
+                # If attendance is A (Absent), fill with "0" (NEW: absence = no engagement)
                 if attendance == "A":
-                    value = "-"
-                    st.session_state.entry_grid[key] = "-"
-                    # Display as disabled field showing "-"
+                    value = "0"
+                    st.session_state.entry_grid[key] = "0"
+                    # Display as disabled field showing "0"
                     cols[4 + i].text_input(
                         f"obs_{key}",
-                        value="-",
+                        value="0",
                         key=f"display_{key}",
                         label_visibility="collapsed",
                         disabled=True,
@@ -391,7 +388,7 @@ def render():
                     )
                 else:
                     # If changed from A to P, clear the value
-                    if current_value == "-" and f"prev_attendance_{student_id}" in st.session_state:
+                    if current_value == "0" and f"prev_attendance_{student_id}" in st.session_state:
                         if st.session_state[f"prev_attendance_{student_id}"] == "A":
                             current_value = ""
                             st.session_state.entry_grid[key] = ""
@@ -403,7 +400,7 @@ def render():
                         key=key,
                         label_visibility="collapsed",
                         max_chars=1,
-                        help="Type 1, 0, or -"
+                        help="Type 1, 0, or - (N/A)"
                     )
                     
                     # Validate and update session state
