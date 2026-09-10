@@ -1,20 +1,26 @@
+/**
+ * Protected Route - Redirects to login if not authenticated
+ */
+
 'use client';
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/auth-store';
 
-export default function Home() {
+export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated());
 
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/dashboard');
-    } else {
+    if (!isAuthenticated) {
       router.push('/login');
     }
   }, [isAuthenticated, router]);
 
-  return null;
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  return <>{children}</>;
 }
