@@ -13,7 +13,7 @@ DATABASE_URL = os.getenv(
 # Create async engine
 engine = create_async_engine(
     DATABASE_URL,
-    echo=True,  # Set to False in production
+    echo=False,  # Set to False in production
     future=True,
     pool_pre_ping=True,
     pool_size=20,
@@ -33,6 +33,9 @@ Base = declarative_base()
 
 async def init_db():
     """Initialize database tables."""
+    # Import models to register them with Base
+    from app.models import User, Student, Class, Observation
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
