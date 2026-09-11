@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
+import { useAuthStore } from '@/lib/auth-store';
 import Link from 'next/link';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -26,6 +27,7 @@ interface ClassAnalytics {
 }
 
 export default function ClassDetailsPage() {
+  const { isAuthenticated } = useAuthStore();
   const searchParams = useSearchParams();
   const classCode = searchParams.get('code');
   const [data, setData] = useState<ClassAnalytics | null>(null);
@@ -33,7 +35,7 @@ export default function ClassDetailsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!classCode) return;
+    if (!classCode || !isAuthenticated()) return;
 
     const loadData = async () => {
       try {
@@ -48,7 +50,7 @@ export default function ClassDetailsPage() {
     };
 
     loadData();
-  }, [classCode]);
+  }, [classCode, isAuthenticated()]);
 
   if (!classCode) {
     return <div>Missing class code</div>;
