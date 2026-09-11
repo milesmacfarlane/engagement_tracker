@@ -100,10 +100,12 @@ export default function ClassesPage() {
   return (
     <div>
       {/* Breadcrumb */}
-      <div className="text-sm text-gray-900 mb-4">
+      <div className="bg-gray-100 -mx-8 -mt-8 px-8 py-6 mb-8">
+      <div className="text-sm text-gray-700 mb-2">
         <a href="/dashboard" className="hover:text-blue-600">Dashboard</a> / <span className="text-gray-900">Classes</span>
       </div>
 
+      </div>
       <h1 className="text-3xl font-bold text-gray-900 mb-2">Classes</h1>
       <p className="text-gray-900 mb-6">Manage classes and sections. Create classes first, then add students.</p>
 
@@ -234,7 +236,7 @@ export default function ClassesPage() {
             Add Class
           </button>
           <a
-            href="/students"
+            href="/dashboard/students"
             className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium inline-block"
           >
             Next: Add Students →

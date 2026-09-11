@@ -36,6 +36,27 @@ def get_database_connection():
         return None
 
 
+def get_connection_string():
+    """
+    Get raw database connection string for direct psycopg2 access
+    Used by migration scripts
+    
+    Returns:
+        str: Connection string or None
+    """
+    try:
+        # Try to get from Streamlit secrets first
+        if 'database_url' in st.secrets:
+            return st.secrets['database_url']
+        # Fall back to environment variable
+        elif 'DATABASE_URL' in os.environ:
+            return os.environ['DATABASE_URL']
+        else:
+            return None
+    except:
+        return None
+
+
 def initialize_database():
     """
     Create tables if they don't exist

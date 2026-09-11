@@ -39,7 +39,7 @@ def render():
         
         # Date input with more prominent styling
         st.markdown("### 📅 Select Observation Date")
-        st.warning("⚠️ **Important:** Select the date for these observations carefully. Existing data for this date will be overwritten.")
+        st.info("💡 **Tip:** You can load existing data to view or update individual students without affecting others.")
         
         observation_date = st.date_input(
             "Observation Date",
@@ -94,10 +94,115 @@ def render():
         lambda sid: utils.get_days_since_last_observation(observations_df, sid)
     )
     
-    # Sort by days since last observation (those needing observation first)
-    class_students = class_students.sort_values('last_obs_date', ascending=False, na_position='first')
+    st.markdown("---")
+    
+    # Load existing data section
+    st.markdown("### 📂 Existing Data for This Date")
+    
+    # Check if data exists for selected date/class
+    existing_obs_for_date = db.load_observations()
+    if len(existing_obs_for_date) > 0:
+        existing_mask = (pd.to_datetime(existing_obs_for_date['date']).dt.date == observation_date) & \
+                       (existing_obs_for_date['class_code'] == selected_class)
+        existing_data = existing_obs_for_date[existing_mask]
+        
+        if len(existing_data) > 0:
+            students_with_data = existing_data['student_id'].nunique()
+            total_observations = len(existing_data)
+            
+            st.info(f"""
+            📊 **Existing data found:**
+            - {students_with_data} students have observations
+            - {total_observations} total observations recorded
+            - Date: {observation_date.strftime('%Y-%m-%d (%A)')}
+            - Class: {selected_class}
+            """)
+            
+            col_load1, col_load2 = st.columns([1, 3])
+            
+            with col_load1:
+                if st.button("📥 Load Existing Data", type="primary", help="Load saved observations into the form"):
+                    # Initialize entry grid if not exists
+                    if 'entry_grid' not in st.session_state:
+                        st.session_state.entry_grid = {}
+                    if 'attendance_status' not in st.session_state:
+                        st.session_state.attendance_status = {}
+                    
+                    # Load existing observations into the grid
+                    loaded_count = 0
+                    for _, obs in existing_data.iterrows():
+                        key = f"{obs['student_id']}_{obs['measure_name']}_{observation_date}"
+                        st.session_state.entry_grid[key] = obs['value']
+                        loaded_count += 1
+                        
+                        # Set attendance status based on observations
+                        if obs['value'] == '-':
+                            st.session_state.attendance_status[obs['student_id']] = 'absent'
+                        elif obs['student_id'] not in st.session_state.attendance_status:
+                            st.session_state.attendance_status[obs['student_id']] = 'present'
+                    
+                    st.success(f"✅ Loaded {loaded_count} observations for {students_with_data} students")
+                    st.rerun()
+            
+            with col_load2:
+                st.caption("Click to load existing data into the form for viewing or editing")
+            
+            # Show summary of which students have data
+            with st.expander("👥 Students with existing data", expanded=False):
+                students_list = existing_data['student_id'].unique()
+                students_names = []
+                for sid in students_list:
+                    student_name = class_students[class_students['student_id'] == sid]['name'].values
+                    if len(student_name) > 0:
+                        students_names.append(f"{sid} - {student_name[0]}")
+                    else:
+                        students_names.append(sid)
+                
+                st.markdown("**Students with observations:**")
+                for name in sorted(students_names):
+                    st.markdown(f"- {name}")
+        else:
+            st.success(f"""
+            ✅ **No existing data for this date**
+            
+            This is a new observation session for:
+            - Date: {observation_date.strftime('%Y-%m-%d (%A)')}
+            - Class: {selected_class}
+            
+            You can enter observations below.
+            """)
+    else:
+        st.success(f"""
+        ✅ **No observations in database yet**
+        
+        This is your first observation session!
+        """)
     
     st.markdown("---")
+    
+    # Sort selector
+    col_sort1, col_sort2 = st.columns([1, 3])
+    with col_sort1:
+        sort_option = st.selectbox(
+            "Sort students by:",
+            options=["Name (A-Z)", "Name (Z-A)", "Student ID", "Last Observation"],
+            index=0,  # Default to alphabetical
+            key="student_sort"
+        )
+    
+    with col_sort2:
+        st.caption("Choose how to order the student list")
+    
+    # Apply sorting based on selection
+    if sort_option == "Name (A-Z)":
+        class_students = class_students.sort_values('name', ascending=True)
+    elif sort_option == "Name (Z-A)":
+        class_students = class_students.sort_values('name', ascending=False)
+    elif sort_option == "Student ID":
+        class_students = class_students.sort_values('student_id', ascending=True)
+    elif sort_option == "Last Observation":
+        class_students = class_students.sort_values('last_obs_date', ascending=False, na_position='first')
+    
     st.subheader(f"Students in {selected_class} ({len(class_students)} students)")
     
     # Show recent observation dates for this class
@@ -116,20 +221,42 @@ def render():
                     
                     # Highlight if it's the currently selected date
                     if obs_date == observation_date:
-                        st.warning(f"⚠️ **{date_str}** - {students_observed} students (CURRENTLY SELECTED - will be overwritten!)")
+                        st.warning(f"⚠️ **{date_str}** - {students_observed} students (CURRENTLY SELECTED)")
                     else:
                         st.info(f"✓ {date_str} - {students_observed} students")
     
-    # Info box
-    st.info("""
-    **Entry Instructions:**
-    - Select **P** (Present) or **A** (Absent) for each student
-    - If PRESENT: Type **1** (observed), **0** (not observed), or **-** (not applicable) in each measure field
-    - If ABSENT: All measures automatically filled with **-**
-    - Press **Tab** to move to next field (auto-advances after typing)
-    - Press **Enter** to move down to same measure for next student
-    - Change from ABSENT to PRESENT clears the **-** values
-    """)
+    # Instructions in expandable section
+    with st.expander("💡 How to Use Quick Entry", expanded=False):
+        st.markdown("""
+        ### Keyboard Shortcuts & Navigation
+        
+        **Attendance:**
+        - Click **P** (Present) or **A** (Absent) for each student
+        - Absent students automatically get **0** in all measures (absence = no engagement)
+        
+        **Entering Observations (for Present students):**
+        - **1** = Behavior observed ✅
+        - **0** = Behavior not observed ❌
+        - **-** = Not applicable / Measure didn't apply that day
+        
+        **Keyboard Navigation:**
+        - **Tab** → Move to next field (right)
+        - **Shift+Tab** → Move to previous field (left)
+        - **Enter** → Move down to same measure for next student
+        - Auto-advances after typing 1, 0, or -
+        
+        **Tips:**
+        - Load existing data to view/edit previous observations
+        - Only enter data for students you're adding/updating
+        - Sort students by name for easier navigation
+        - Use Tab key to quickly move through the grid
+        - Use **-** only for measures that didn't apply (e.g., no group work that day)
+        
+        **Saving:**
+        - **New date** → Saves all entered observations
+        - **Existing date + new students** → Adds them without affecting others
+        - **Existing date + existing students** → Updates only those students (shows confirmation)
+        """)
     
     # Initialize session state for entry grid
     if 'entry_grid' not in st.session_state:
@@ -141,17 +268,13 @@ def render():
     # Display entry grid with headers
     st.markdown("### Observation Entry Grid")
     
-    # Measure abbreviations for column headers
+    # Measure abbreviations for column headers (5 measures - more spacious)
     measure_abbrev = {
-        "Time on Task": "Time",
-        "Asked/Answered/Shared": "Ask/Ans",
-        "Work Completed/Ready": "Work",
+        "Time on Task": "Time on Task",
+        "Asked/Answered/Shared": "Ask/Ans/Share",
+        "Engaged with Content and Others": "Content & Others",
         "Materials/Organized": "Materials",
-        "Helping/Asking for Help": "Help",
-        "Asks for Clarification": "Clarify",
-        "Check-ins with Teacher": "Check-in",
-        "Asks for Ways to Improve": "Improve",
-        "In-class Work Completed": "Complete"
+        "Seeks Teacher Support": "Teacher Support"
     }
     
     # Create sticky header with full measure names
@@ -169,20 +292,20 @@ def render():
     .measure-header table {
         width: 100%;
         font-weight: bold;
-        font-size: 0.8em;
+        font-size: 0.85em;
     }
     </style>
     """, unsafe_allow_html=True)
     
-    # Header row with full measure names
-    header_cols = st.columns([2, 1, 1, 0.7] + [1] * len(utils.ENGAGEMENT_MEASURES))
+    # Header row - more spacious with 5 measures
+    header_cols = st.columns([2.5, 1, 1, 0.8] + [1.5] * len(utils.ENGAGEMENT_MEASURES))
     header_cols[0].markdown("**Student**")
     header_cols[1].markdown("**Last Obs**")
     header_cols[2].markdown("**Status**")
     header_cols[3].markdown("**Attend.**")
     
     for i, measure in enumerate(utils.ENGAGEMENT_MEASURES):
-        header_cols[4 + i].markdown(f"**{measure_abbrev.get(measure, measure[:8])}**", 
+        header_cols[4 + i].markdown(f"**{measure_abbrev.get(measure, measure)}**", 
                                      help=measure)
     
     st.markdown("---")
@@ -208,8 +331,8 @@ def render():
                                                  help=measure)
                 st.markdown("---")
             
-            # Create columns for this student row
-            cols = st.columns([2, 1, 1, 0.7] + [1] * len(utils.ENGAGEMENT_MEASURES))
+            # Create columns for this student row - more spacious with 5 measures
+            cols = st.columns([2.5, 1, 1, 0.8] + [1.5] * len(utils.ENGAGEMENT_MEASURES))
             
             # Student name
             cols[0].markdown(f"**{student['name']}**")
@@ -250,14 +373,14 @@ def render():
                 # Get current value from session state
                 current_value = st.session_state.entry_grid.get(key, "")
                 
-                # If attendance is A (Absent), fill with "-"
+                # If attendance is A (Absent), fill with "0" (NEW: absence = no engagement)
                 if attendance == "A":
-                    value = "-"
-                    st.session_state.entry_grid[key] = "-"
-                    # Display as disabled field showing "-"
+                    value = "0"
+                    st.session_state.entry_grid[key] = "0"
+                    # Display as disabled field showing "0"
                     cols[4 + i].text_input(
                         f"obs_{key}",
-                        value="-",
+                        value="0",
                         key=f"display_{key}",
                         label_visibility="collapsed",
                         disabled=True,
@@ -265,7 +388,7 @@ def render():
                     )
                 else:
                     # If changed from A to P, clear the value
-                    if current_value == "-" and f"prev_attendance_{student_id}" in st.session_state:
+                    if current_value == "0" and f"prev_attendance_{student_id}" in st.session_state:
                         if st.session_state[f"prev_attendance_{student_id}"] == "A":
                             current_value = ""
                             st.session_state.entry_grid[key] = ""
@@ -277,7 +400,7 @@ def render():
                         key=key,
                         label_visibility="collapsed",
                         max_chars=1,
-                        help="Type 1, 0, or -"
+                        help="Type 1, 0, or - (N/A)"
                     )
                     
                     # Validate and update session state
@@ -355,12 +478,14 @@ def render():
 
 
 def save_observations(observation_date, class_code, class_students):
-    """Save observations to database with overwrite protection"""
+    """Save observations to database with smart update/add logic"""
     
     observations_to_save = []
     entry_count = 0
+    students_with_entries = set()
     
     for idx, student in class_students.iterrows():
+        student_has_data = False
         for measure in utils.ENGAGEMENT_MEASURES:
             key = f"{student['student_id']}_{measure}_{observation_date}"
             value = st.session_state.entry_grid.get(key, "")
@@ -375,6 +500,10 @@ def save_observations(observation_date, class_code, class_students):
                     'value': value
                 })
                 entry_count += 1
+                student_has_data = True
+        
+        if student_has_data:
+            students_with_entries.add(student['student_id'])
     
     if entry_count == 0:
         st.warning("⚠️ No observations to save. Please enter at least one observation.")
@@ -386,49 +515,109 @@ def save_observations(observation_date, class_code, class_students):
                    (existing_obs['class_code'] == class_code)
     
     if existing_mask.any():
-        # Count affected students
-        existing_students = existing_obs[existing_mask]['student_id'].nunique()
+        # Check which students from entries already have data
+        existing_student_ids = set(existing_obs[existing_mask]['student_id'].unique())
+        students_to_overwrite = students_with_entries.intersection(existing_student_ids)
+        students_to_add = students_with_entries - existing_student_ids
+        
+        # Count affected records
         existing_total = existing_mask.sum()
+        total_students_in_existing = len(existing_student_ids)
         
-        st.error(f"""
-        ### ⚠️ OVERWRITE WARNING
-        
-        **Existing data found:**
-        - {existing_students} students
-        - {existing_total} observation records
-        - Date: {observation_date}
-        - Class: {class_code}
-        
-        **This data will be PERMANENTLY DELETED and replaced with your new entries.**
-        
-        Are you sure you want to continue?
-        """)
-        
-        # Create two columns for the confirmation buttons
-        col1, col2, col3 = st.columns([1, 1, 2])
-        
-        with col1:
-            if st.button("✅ Yes, Overwrite", type="primary", key="confirm_overwrite"):
-                # Delete existing observations
-                db.delete_observations(observation_date, class_code)
-                
-                # Save new observations
-                db.add_observations(observations_to_save)
-                
-                st.success(f"✅ Overwrote existing data and saved {entry_count} new observations for {class_code} on {observation_date}")
-                
-                # Clear the grid
-                st.session_state.entry_grid = {}
-                st.session_state.attendance_status = {}
-                st.balloons()
-        
-        with col2:
-            if st.button("❌ Cancel", key="cancel_overwrite"):
-                st.info("Save cancelled. Your data was NOT saved.")
-                return
-        
-        # Stop here - wait for user to click a button
-        st.stop()
+        # Determine save mode
+        if len(students_to_add) > 0 and len(students_to_overwrite) == 0:
+            # ADDITIVE MODE - only adding new students, not touching existing
+            st.info(f"""
+            ### ➕ Adding New Student Data
+            
+            **Adding observations for:**
+            - {len(students_to_add)} new student(s)
+            - Date: {observation_date}
+            - Class: {class_code}
+            
+            **Existing data for {total_students_in_existing} other students will be preserved.**
+            """)
+            
+            # Save new observations without deleting anything
+            db.add_observations(observations_to_save)
+            
+            st.success(f"✅ Added {entry_count} observations for {len(students_to_add)} new student(s)")
+            
+            # Clear the grid
+            st.session_state.entry_grid = {}
+            st.session_state.attendance_status = {}
+            st.balloons()
+            
+        else:
+            # UPDATE/OVERWRITE MODE - modifying existing students
+            st.error(f"""
+            ### ⚠️ UPDATE WARNING
+            
+            **This will update/overwrite data for:**
+            - {len(students_to_overwrite)} student(s) you entered
+            
+            **Data for {total_students_in_existing - len(students_to_overwrite)} other students will be preserved.**
+            
+            **Students affected:** {', '.join(students_to_overwrite)}
+            
+            Are you sure you want to continue?
+            """)
+            
+            # Create confirmation buttons
+            col1, col2, col3 = st.columns([1, 1, 2])
+            
+            with col1:
+                if st.button("✅ Yes, Update", type="primary", key="confirm_update"):
+                    # Delete ONLY the students we're updating
+                    for student_id in students_to_overwrite:
+                        student_mask = existing_mask & (existing_obs['student_id'] == student_id)
+                        # Remove these specific records
+                        observations_to_keep = existing_obs[~student_mask]
+                    
+                    # Delete observations for ONLY the students we're updating
+                    existing_obs_filtered = existing_obs[existing_mask]
+                    students_to_delete_mask = existing_obs_filtered['student_id'].isin(students_to_overwrite)
+                    
+                    if students_to_delete_mask.any():
+                        # This is a workaround - we need to delete by student
+                        for student_id in students_to_overwrite:
+                            # Delete observations for this specific student on this date/class
+                            obs_to_remove = existing_obs[
+                                (pd.to_datetime(existing_obs['date']).dt.date == observation_date) & 
+                                (existing_obs['class_code'] == class_code) &
+                                (existing_obs['student_id'] == student_id)
+                            ]
+                            # Note: This is a limitation - we'd need a delete_student_observations function
+                            # For now, we'll do a full delete and re-add all
+                    
+                    # WORKAROUND: Delete all observations for this date/class, then re-add
+                    # Keep observations we want to preserve
+                    observations_to_keep = existing_obs[~existing_mask].to_dict('records')
+                    observations_to_keep_for_date = existing_obs[
+                        existing_mask & ~existing_obs['student_id'].isin(students_to_overwrite)
+                    ].to_dict('records')
+                    
+                    # Delete all for this date/class
+                    db.delete_observations(observation_date, class_code)
+                    
+                    # Re-add what we want to keep plus new data
+                    all_observations = observations_to_keep_for_date + observations_to_save
+                    db.add_observations(all_observations)
+                    
+                    st.success(f"✅ Updated {len(students_to_overwrite)} student(s). Other data preserved.")
+                    
+                    # Clear the grid
+                    st.session_state.entry_grid = {}
+                    st.session_state.attendance_status = {}
+                    st.balloons()
+            
+            with col2:
+                if st.button("❌ Cancel", key="cancel_update"):
+                    st.info("Save cancelled. No changes made.")
+                    return
+            
+            # Stop here - wait for user to click a button
+            st.stop()
     
     else:
         # No existing data - save directly

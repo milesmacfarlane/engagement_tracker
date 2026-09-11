@@ -14,6 +14,24 @@ from pathlib import Path
 pages_dir = Path(__file__).parent / 'pages'
 sys.path.insert(0, str(pages_dir))
 
+# Import database module first to initialize tables
+import database as db
+
+# Initialize database tables on app startup (if not already initialized)
+if 'db_initialized' not in st.session_state:
+    try:
+        # Check if initialize_database function exists
+        if hasattr(db, 'initialize_database'):
+            db.initialize_database()
+            st.session_state.db_initialized = True
+        else:
+            # Database module doesn't have initialize_database
+            # Tables will be created on first use
+            st.session_state.db_initialized = True
+    except Exception as e:
+        st.warning(f"Database initialization skipped: {str(e)}")
+        st.session_state.db_initialized = False
+
 # Import page modules
 import entry_log
 import student_dashboard
@@ -86,10 +104,12 @@ def main():
     
     # Sidebar navigation
     with st.sidebar:
-        st.image("https://via.placeholder.com/150x50/1F4788/FFFFFF?text=Engagement+Tracker", 
-                use_container_width=True)
-        
+        st.image("https://media.7oaks.org/media/Default/fgg/36/West20Kildonan20Logo.jpg",
+                width=100)
+    
         st.markdown("---")
+        
+
         
         # Navigation menu
         page = st.radio(

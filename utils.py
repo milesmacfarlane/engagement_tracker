@@ -4,18 +4,45 @@ Utility functions for engagement tracking calculations
 import pandas as pd
 from datetime import datetime, timedelta
 
-# 9 Engagement Measures
+# 5 Engagement Measures (Updated)
 ENGAGEMENT_MEASURES = [
     "Time on Task",
     "Asked/Answered/Shared",
-    "Work Completed/Ready",
+    "Engaged with Content and Others",
     "Materials/Organized",
-    "Helping/Asking for Help",
-    "Asks for Clarification",
-    "Check-ins with Teacher",
-    "Asks for Ways to Improve",
-    "In-class Work Completed"
+    "Seeks Teacher Support"
 ]
+
+# Mapping from old 9 measures to new 5 measures (for historical data)
+MEASURE_MAPPING = {
+    # New measure names (stay as-is)
+    "Time on Task": "Time on Task",
+    "Asked/Answered/Shared": "Asked/Answered/Shared",
+    "Engaged with Content and Others": "Engaged with Content and Others",
+    "Materials/Organized": "Materials/Organized",
+    "Seeks Teacher Support": "Seeks Teacher Support",
+    
+    # Old measure names (map to new)
+    "In-class Work Completed": "Time on Task",
+    "Work Completed/Ready": "Engaged with Content and Others",
+    "Helping/Asking for Help": "Engaged with Content and Others",
+    "Asks for Clarification": "Seeks Teacher Support",
+    "Check-ins with Teacher": "Seeks Teacher Support",
+    "Asks for Ways to Improve": "Seeks Teacher Support"
+}
+
+
+def normalize_measure_name(measure_name):
+    """
+    Map old measure names to new measure names for backward compatibility
+    
+    Args:
+        measure_name: Original measure name from database
+    
+    Returns:
+        str: Normalized measure name
+    """
+    return MEASURE_MAPPING.get(measure_name, measure_name)
 
 # Performance Band Criteria
 PERFORMANCE_BANDS = [
@@ -44,13 +71,18 @@ def calculate_performance(observations_df, student_id=None, measure=None):
     """
     Calculate performance % for observations
     
+    NEW BEHAVIOR (v2.0):
+    - Absent students get '0' values (counted against achievement)
+    - '-' values mean "didn't apply that day" (not counted)
+    - Achievement % = 1s / (1s + 0s) where 0s include absent days
+    
     Args:
         observations_df: DataFrame with observations
         student_id: Optional filter by student
         measure: Optional filter by measure
     
     Returns:
-        tuple: (percentage, ones_count, zeros_count, absent_count, valid_count)
+        tuple: (percentage, ones_count, zeros_count, not_applicable_count, valid_count)
     """
     df = observations_df.copy()
     
@@ -58,19 +90,25 @@ def calculate_performance(observations_df, student_id=None, measure=None):
         df = df[df['student_id'] == student_id]
     
     if measure is not None:
-        df = df[df['measure_name'] == measure]
+        # Normalize measure name for backward compatibility
+        normalized_measure = normalize_measure_name(measure)
+        # Get all observations that map to this measure
+        df = df[df['measure_name'].apply(normalize_measure_name) == normalized_measure]
     
     if len(df) == 0:
         return None, 0, 0, 0, 0
     
     ones = len(df[df['value'] == '1'])
-    zeros = len(df[df['value'] == '0'])
-    absent = len(df[df['value'] == '-'])
-    valid = ones + zeros
+    zeros = len(df[df['value'] == '0'])  # Now includes absences
+    not_applicable = len(df[df['value'] == '-'])  # Only for "didn't apply"
+    valid = ones + zeros  # Zeros now count (absences are zeros)
     
     if valid == 0:
         percentage = None
     else:
+        percentage = (ones / valid) * 100
+    
+    return percentage, ones, zeros, not_applicable, valid
         percentage = (ones / valid) * 100
     
     return percentage, ones, zeros, absent, valid
@@ -246,6 +284,7 @@ def validate_observation_value(value):
 def get_student_measure_breakdown(observations_df, student_id):
     """
     Get measure-by-measure breakdown for a student
+    Groups historical 9-measure data into new 5-measure structure
     
     Args:
         observations_df: DataFrame with observations
@@ -257,19 +296,19 @@ def get_student_measure_breakdown(observations_df, student_id):
     breakdown = []
     
     for measure in ENGAGEMENT_MEASURES:
-        perf, ones, zeros, absent, valid = calculate_performance(
+        perf, ones, zeros, not_applicable, valid = calculate_performance(
             observations_df, student_id=student_id, measure=measure
         )
         
-        # Total observations for this measure (not used for absence count)
-        total = ones + zeros + absent
+        # Total observations for this measure
+        total = ones + zeros + not_applicable
         
         breakdown.append({
             'Measure': measure,
             'Total': total,
             '1s (Observed)': ones,
-            '0s (Not Observed)': zeros,
-            '- (Absent)': absent,
+            '0s (Not Observed)': zeros,  # Now includes absences
+            '- (N/A)': not_applicable,  # Only "didn't apply"
             'Valid Observations': valid,
             'Performance %': perf,
             'Band': get_performance_band(perf)[0],
@@ -283,6 +322,10 @@ def get_days_absent(observations_df, student_id):
     """
     Calculate number of days student was absent
     
+    NEW BEHAVIOR (v2.0):
+    A day is counted as absent if ALL observed measures for that day are '0'
+    (since absent students now get 0s, not dashes)
+    
     Args:
         observations_df: DataFrame with observations
         student_id: Student ID
@@ -295,10 +338,15 @@ def get_days_absent(observations_df, student_id):
     if len(student_obs) == 0:
         return 0
     
-    # Get unique dates where ANY observation was marked as absent
-    absent_dates = student_obs[student_obs['value'] == '-']['date'].unique()
+    # Group by date and check if ALL observations are 0 (indicating absence)
+    absent_days = 0
+    for date in student_obs['date'].unique():
+        date_obs = student_obs[student_obs['date'] == date]
+        # If all values for this date are '0', student was absent
+        if all(date_obs['value'] == '0'):
+            absent_days += 1
     
-    return len(absent_dates)
+    return absent_days
 
 
 def get_total_observation_days(observations_df, student_id):
@@ -501,3 +549,277 @@ def create_sample_data():
     observations_df = pd.DataFrame(observations)
     
     return students_df, classes_df, observations_df
+
+
+# ============================================================================
+# ENGAGEMENT ANALYSIS METRICS
+# ============================================================================
+
+def calculate_effective_engagement(attendance_pct, achievement_pct):
+    """
+    Calculate Effective Engagement Score (EES)
+    
+    EES accounts for both attendance and achievement:
+    A student who is 90% present and 50% engaged has different
+    effective engagement than one who is 50% present and 90% engaged.
+    
+    Args:
+        attendance_pct: Attendance percentage (0-100)
+        achievement_pct: Achievement percentage (0-100)
+    
+    Returns:
+        float: Effective Engagement Score (0-100)
+    """
+    if attendance_pct is None or achievement_pct is None:
+        return 0.0
+    return (attendance_pct * achievement_pct) / 100
+
+
+def identify_primary_barrier(attendance_pct, achievement_pct, threshold=15):
+    """
+    Identify whether attendance or engagement is the primary barrier
+    
+    Args:
+        attendance_pct: Attendance percentage (0-100)
+        achievement_pct: Achievement percentage (0-100)
+        threshold: Percentage difference threshold (default 15)
+    
+    Returns:
+        str: "Attendance", "Engagement", or "Balanced"
+    """
+    if attendance_pct is None or achievement_pct is None:
+        return "Unknown"
+    
+    diff = attendance_pct - achievement_pct
+    
+    if abs(diff) < threshold:
+        return "Balanced"
+    elif diff > threshold:
+        return "Engagement"
+    else:
+        return "Attendance"
+
+
+def classify_engagement_type(attendance_pct, achievement_pct):
+    """
+    Classify student into engagement type category
+    
+    Args:
+        attendance_pct: Attendance percentage (0-100)
+        achievement_pct: Achievement percentage (0-100)
+    
+    Returns:
+        tuple: (category, emoji, description, intervention)
+    """
+    if attendance_pct is None or achievement_pct is None:
+        return ("Unknown", "❓", "No data available", "Gather baseline data")
+    
+    # Define thresholds
+    high_attendance = attendance_pct >= 80
+    low_attendance = attendance_pct < 70
+    high_achievement = achievement_pct >= 70
+    low_achievement = achievement_pct < 60
+    
+    # Classification logic
+    if high_attendance and high_achievement:
+        return (
+            "Exemplary",
+            "⭐",
+            "Consistently present and highly engaged",
+            "Continue current strategies, consider leadership opportunities"
+        )
+    
+    elif high_attendance and low_achievement:
+        return (
+            "Present but Disengaged",
+            "⚠️",
+            "Attending regularly but not engaging with material",
+            "Focus on engagement strategies, check for understanding barriers"
+        )
+    
+    elif low_attendance and high_achievement:
+        return (
+            "Engaged but Absent",
+            "📚",
+            "Highly engaged when present but poor attendance",
+            "Address attendance barriers, explore alternative learning paths"
+        )
+    
+    elif low_attendance and low_achievement:
+        return (
+            "Critical Intervention Needed",
+            "🚨",
+            "Both attendance and engagement are concerns",
+            "Comprehensive support plan, family contact, counseling referral"
+        )
+    
+    else:
+        # Middle range
+        if attendance_pct >= achievement_pct:
+            return (
+                "Developing - Focus Engagement",
+                "📈",
+                "Moderate attendance, needs engagement support",
+                "Build on attendance strength, increase engagement"
+            )
+        else:
+            return (
+                "Developing - Focus Attendance",
+                "📅",
+                "Shows engagement when present, improve attendance",
+                "Address attendance barriers while maintaining engagement"
+            )
+
+
+def calculate_opportunity_lost(attendance_pct, achievement_pct):
+    """
+    Calculate percentage of engagement opportunity lost due to absence
+    
+    Args:
+        attendance_pct: Attendance percentage (0-100)
+        achievement_pct: Achievement percentage (0-100)
+    
+    Returns:
+        float: Percentage of potential engagement lost to absence
+    """
+    if attendance_pct is None or achievement_pct is None:
+        return 0.0
+    
+    potential = achievement_pct  # What they could achieve if they attended
+    actual = (attendance_pct * achievement_pct) / 100  # What they actually achieve
+    lost = potential - actual
+    
+    return max(0.0, lost)  # Can't be negative
+
+
+def get_engagement_correlation(observations_df, students_df):
+    """
+    Calculate correlation between attendance and achievement for a class
+    
+    Args:
+        observations_df: DataFrame with observations
+        students_df: DataFrame with students
+    
+    Returns:
+        float: Correlation coefficient (-1 to 1)
+    """
+    if len(observations_df) == 0 or len(students_df) == 0:
+        return 0.0
+    
+    student_metrics = []
+    
+    for _, student in students_df.iterrows():
+        student_obs = observations_df[observations_df['student_id'] == student['student_id']]
+        
+        if len(student_obs) == 0:
+            continue
+        
+        attendance_pct = calculate_attendance_rate(observations_df, student['student_id'])
+        achievement_pct = calculate_performance(observations_df, student_id=student['student_id'])[0]
+        
+        if attendance_pct is not None and achievement_pct is not None:
+            student_metrics.append({
+                'attendance': attendance_pct,
+                'achievement': achievement_pct
+            })
+    
+    if len(student_metrics) < 2:
+        return 0.0
+    
+    metrics_df = pd.DataFrame(student_metrics)
+    correlation = metrics_df['attendance'].corr(metrics_df['achievement'])
+    
+    return correlation if not pd.isna(correlation) else 0.0
+
+
+def get_class_engagement_distribution(observations_df, students_df):
+    """
+    Get distribution of students across engagement type categories
+    
+    Args:
+        observations_df: DataFrame with observations
+        students_df: DataFrame with students
+    
+    Returns:
+        dict: Count of students in each category
+    """
+    distribution = {
+        "Exemplary": 0,
+        "Present but Disengaged": 0,
+        "Engaged but Absent": 0,
+        "Critical Intervention Needed": 0,
+        "Developing - Focus Engagement": 0,
+        "Developing - Focus Attendance": 0,
+        "Unknown": 0
+    }
+    
+    for _, student in students_df.iterrows():
+        attendance_pct = calculate_attendance_rate(observations_df, student['student_id'])
+        achievement_pct = calculate_performance(observations_df, student_id=student['student_id'])[0]
+        
+        category, _, _, _ = classify_engagement_type(attendance_pct, achievement_pct)
+        distribution[category] += 1
+    
+    return distribution
+
+
+def get_engagement_insights(observations_df, students_df):
+    """
+    Generate insights about engagement patterns in the class
+    
+    Args:
+        observations_df: DataFrame with observations
+        students_df: DataFrame with students
+    
+    Returns:
+        dict: Various engagement insights
+    """
+    if len(observations_df) == 0 or len(students_df) == 0:
+        return {
+            'avg_effective_engagement': 0,
+            'correlation': 0,
+            'present_but_disengaged_count': 0,
+            'engaged_but_absent_count': 0,
+            'opportunity_lost_avg': 0,
+            'primary_barrier_counts': {'Attendance': 0, 'Engagement': 0, 'Balanced': 0}
+        }
+    
+    effective_engagements = []
+    opportunities_lost = []
+    primary_barriers = {'Attendance': 0, 'Engagement': 0, 'Balanced': 0, 'Unknown': 0}
+    present_disengaged = 0
+    engaged_absent = 0
+    
+    for _, student in students_df.iterrows():
+        attendance_pct = calculate_attendance_rate(observations_df, student['student_id'])
+        achievement_pct = calculate_performance(observations_df, student_id=student['student_id'])[0]
+        
+        if attendance_pct is not None and achievement_pct is not None:
+            # Effective engagement
+            ees = calculate_effective_engagement(attendance_pct, achievement_pct)
+            effective_engagements.append(ees)
+            
+            # Opportunity lost
+            lost = calculate_opportunity_lost(attendance_pct, achievement_pct)
+            opportunities_lost.append(lost)
+            
+            # Primary barrier
+            barrier = identify_primary_barrier(attendance_pct, achievement_pct)
+            primary_barriers[barrier] += 1
+            
+            # Count specific patterns
+            category, _, _, _ = classify_engagement_type(attendance_pct, achievement_pct)
+            if category == "Present but Disengaged":
+                present_disengaged += 1
+            elif category == "Engaged but Absent":
+                engaged_absent += 1
+    
+    return {
+        'avg_effective_engagement': sum(effective_engagements) / len(effective_engagements) if effective_engagements else 0,
+        'correlation': get_engagement_correlation(observations_df, students_df),
+        'present_but_disengaged_count': present_disengaged,
+        'engaged_but_absent_count': engaged_absent,
+        'opportunity_lost_avg': sum(opportunities_lost) / len(opportunities_lost) if opportunities_lost else 0,
+        'primary_barrier_counts': primary_barriers
+    }
+

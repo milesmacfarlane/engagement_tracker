@@ -11,10 +11,10 @@ import { useAuthStore } from '@/lib/auth-store';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: '📊' },
-  { href: '/entry-log', label: 'Quick Entry Log', icon: '📝' },
-  { href: '/students', label: 'Students', icon: '👥' },
-  { href: '/classes', label: 'Classes', icon: '📚' },
-  { href: '/reports', label: 'Reports', icon: '📄' },
+  { href: '/dashboard/entry-log', label: 'Quick Entry Log', icon: '📝' },
+  { href: '/dashboard/students', label: 'Students', icon: '👥' },
+  { href: '/dashboard/classes', label: 'Classes', icon: '📚' },
+  { href: '/dashboard/reports', label: 'Reports', icon: '📄' },
 ];
 
 export function Sidebar() {
