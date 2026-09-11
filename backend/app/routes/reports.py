@@ -8,8 +8,12 @@ from io import BytesIO
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, HRFlowable
 from reportlab.lib.units import inch
+from reportlab.pdfgen import canvas
+from reportlab.graphics.shapes import Drawing, Line, Rect
+from reportlab.graphics.charts.barcharts import VerticalBarChart
+from reportlab.graphics.charts.piecharts import Pie
 from datetime import datetime
 import tempfile
 import os
@@ -102,71 +106,57 @@ async def generate_student_report(
 
             story = []
 
-            # Title
-            story.append(Paragraph("Student Engagement Report", title_style))
+            # Professional header with title and student info
+            story.append(Paragraph("<font size=20 color='#1F4788'><b>Student Engagement Report</b></font>", styles['Heading1']))
+            story.append(Spacer(1, 0.15*inch))
+
+            # Student info in compact format
+            info_text = f"<b>{student.name}</b> | ID: {student.student_id} | Class: {student.primary_class} | Generated: {datetime.now().strftime('%Y-%m-%d')}"
+            story.append(Paragraph(info_text, styles['Normal']))
             story.append(Spacer(1, 0.2*inch))
 
-            # Student info
-            info_data = [
-                ["Student Name:", student.name],
-                ["Student ID:", student.student_id],
-                ["Class:", student.primary_class],
-                ["Generated:", datetime.now().strftime("%Y-%m-%d %H:%M")]
-            ]
-            info_table = Table(info_data, colWidths=[2*inch, 3.5*inch])
-            info_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f0f0f0')),
-                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                ('GRID', (0, 0), (-1, -1), 1, colors.grey)
-            ]))
-            story.append(info_table)
-            story.append(Spacer(1, 0.3*inch))
-
-            # Overall performance with color-coded boxes
-            story.append(Paragraph("Overall Performance", heading_style))
-
-            # Create 4 metrics boxes
+            # Key Metrics - 4 colored boxes in a row
             metrics_data = [
                 [
-                    f"<b>Achievement %</b><br/><font size=18><b>{CalculationService.format_percentage(overall_perf)}</b></font>",
-                    f"<b>Performance Band</b><br/><font size=14><b>{band_name}</b></font>",
-                    f"<b>Attendance %</b><br/><font size=18><b>{CalculationService.format_percentage(attendance)}</b></font>",
-                    f"<b>Days Observed</b><br/><font size=14><b>{days_observed}</b></font>"
+                    f"<b>Achievement %</b><br/><br/><font size=20><b>{CalculationService.format_percentage(overall_perf)}</b></font>",
+                    f"<b>Performance Band</b><br/><br/><font size=16><b>{band_name}</b></font>",
+                    f"<b>Attendance %</b><br/><br/><font size=20><b>{CalculationService.format_percentage(attendance)}</b></font>",
+                    f"<b>Observations</b><br/><br/><font size=16><b>{days_observed} days</b></font>"
                 ]
             ]
-            metrics_table = Table(metrics_data, colWidths=[1.4*inch, 1.4*inch, 1.4*inch, 1.4*inch])
+            metrics_table = Table(metrics_data, colWidths=[1.35*inch, 1.35*inch, 1.35*inch, 1.35*inch])
 
-            # Color the boxes based on achievement
+            # Determine color based on performance
             if overall_perf and overall_perf >= 80:
-                box_color = colors.HexColor('#dcfce7')  # Green
+                primary_color = colors.HexColor('#059669')  # Dark green
+                bg_color = colors.HexColor('#d1fae5')  # Light green
             elif overall_perf and overall_perf >= 60:
-                box_color = colors.HexColor('#dbeafe')  # Blue
+                primary_color = colors.HexColor('#0369a1')  # Dark blue
+                bg_color = colors.HexColor('#cffafe')  # Light blue
             else:
-                box_color = colors.HexColor('#fef3c7')  # Yellow
+                primary_color = colors.HexColor('#ca8a04')  # Dark yellow
+                bg_color = colors.HexColor('#fef08a')  # Light yellow
 
             metrics_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, -1), box_color),
+                ('BACKGROUND', (0, 0), (-1, -1), bg_color),
                 ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                 ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-                ('FONTSIZE', (0, 0), (-1, -1), 9),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
-                ('TOPPADDING', (0, 0), (-1, -1), 12),
-                ('LEFTPADDING', (0, 0), (-1, -1), 8),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1F4788')),
-                ('LINEWIDTH', (0, 0), (-1, -1), 2),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
+                ('TOPPADDING', (0, 0), (-1, -1), 15),
+                ('LEFTPADDING', (0, 0), (-1, -1), 10),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+                ('GRID', (0, 0), (-1, -1), 2, primary_color),
+                ('LINEWIDTH', (0, 0), (-1, -1), 2.5),
+                ('ROUNDED', (0, 0), (-1, -1), 5),
             ]))
             story.append(metrics_table)
-            story.append(Spacer(1, 0.3*inch))
+            story.append(Spacer(1, 0.25*inch))
 
             # Measure breakdown with visual chart
-            story.append(Paragraph("Performance by Measure", heading_style))
+            story.append(Paragraph("<font color='#1F4788'><b>Performance by Measure</b></font>", heading_style))
+            story.append(Spacer(1, 0.1*inch))
 
             if not has_data or not measure_breakdown:
                 story.append(Paragraph(
@@ -192,43 +182,45 @@ async def generate_student_report(
                             band
                         ])
 
-                    measure_table = Table(measure_data, colWidths=[2.0*inch, 2.5*inch, 1.5*inch])
+                    measure_table = Table(measure_data, colWidths=[2.2*inch, 2.3*inch, 1.5*inch])
 
-                    # Color rows based on performance band
+                    # Professional styling for measure table
                     style_list = [
                         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1F4788')),
-                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                        ('ALIGN', (0, 1), (0, -1), 'LEFT'),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
                         ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
                         ('FONTNAME', (2, 1), (2, -1), 'Helvetica-Bold'),
-                        ('FONTSIZE', (0, 0), (-1, 0), 10),
-                        ('FONTSIZE', (0, 1), (-1, -1), 9),
-                        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-                        ('TOPPADDING', (0, 0), (-1, -1), 6),
-                        ('LEFTPADDING', (0, 0), (-1, -1), 6),
-                        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-                        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cccccc')),
-                        ('LINEWIDTH', (0, 0), (-1, 0), 1.5),
-                        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9f9f9')]),
+                        ('FONTSIZE', (0, 0), (-1, 0), 11),
+                        ('FONTSIZE', (0, 1), (-1, -1), 10),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                        ('TOPPADDING', (0, 0), (-1, -1), 8),
+                        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#ddd')),
+                        ('LINEWIDTH', (0, 0), (-1, 0), 2),
+                        ('LINEABOVE', (0, 0), (-1, 0), 2, colors.HexColor('#1F4788')),
                     ]
 
-                    # Add row colors based on band
+                    # Color-code rows by performance band
                     for idx, m in enumerate(measure_breakdown, 1):
                         band = m.get('band', 'N/A')
                         if band == 'Exemplary':
-                            color = colors.HexColor('#dcfce7')  # Light green
+                            color = colors.HexColor('#ecfdf5')  # Very light green
                         elif band == 'Proficient':
-                            color = colors.HexColor('#dbeafe')  # Light blue
+                            color = colors.HexColor('#f0f9ff')  # Very light blue
                         elif band == 'Developing':
-                            color = colors.HexColor('#fef3c7')  # Light yellow
+                            color = colors.HexColor('#fefce8')  # Very light yellow
                         elif band == 'Emerging':
-                            color = colors.HexColor('#fed7aa')  # Light orange
+                            color = colors.HexColor('#fff7ed')  # Very light orange
                         else:
-                            color = colors.HexColor('#fecaca')  # Light red
+                            color = colors.HexColor('#fef2f2')  # Very light red
 
-                        # Override the background for this row with the band color
                         style_list.append(('BACKGROUND', (0, idx), (-1, idx), color))
+                        # Add a left border stripe for visual interest
+                        style_list.append(('LEFTPADDING', (0, idx), (0, idx), 12))
 
                     measure_table.setStyle(TableStyle(style_list))
                     story.append(measure_table)
