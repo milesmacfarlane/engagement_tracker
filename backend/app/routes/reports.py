@@ -66,8 +66,15 @@ async def generate_student_report(
             measure_breakdown = await CalculationService.get_student_measure_breakdown(session, student_id)
             attendance = await CalculationService.calculate_attendance_rate(session, student_id)
             days_observed = await CalculationService.get_total_observation_days(session, student_id)
-            band_name, _ = CalculationService.get_performance_band(overall_perf)
-            next_steps = CalculationService.get_recommended_next_steps(overall_perf)
+
+            has_data = overall_perf is not None and overall_perf > 0
+
+            if has_data:
+                band_name, _ = CalculationService.get_performance_band(overall_perf)
+                next_steps = CalculationService.get_recommended_next_steps(overall_perf)
+            else:
+                band_name = "N/A"
+                next_steps = "No observation data available for this student."
 
             # Create PDF in memory
             pdf_buffer = BytesIO()
@@ -140,29 +147,36 @@ async def generate_student_report(
 
             # Measure breakdown
             story.append(Paragraph("Measure Breakdown", heading_style))
-            measure_data = [["Measure", "Performance %", "Band", "Status"]]
-            for m in measure_breakdown:
-                measure_data.append([
-                    m['measure'][:25],
-                    CalculationService.format_percentage(m['performance_percentage']),
-                    m['band'],
-                    m['status']
-                ])
 
-            measure_table = Table(measure_data, colWidths=[2.5*inch, 1.5*inch, 1.2*inch, 0.8*inch])
-            measure_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1F4788')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('FONTSIZE', (0, 1), (-1, -1), 9),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9f9f9')])
-            ]))
-            story.append(measure_table)
+            if not has_data or not measure_breakdown:
+                story.append(Paragraph(
+                    "<i>No observation data available. No performance measurements to display.</i>",
+                    styles['Normal']
+                ))
+            else:
+                measure_data = [["Measure", "Performance %", "Band", "Status"]]
+                for m in measure_breakdown:
+                    measure_data.append([
+                        m['measure'][:25],
+                        CalculationService.format_percentage(m['performance_percentage']),
+                        m['band'],
+                        m['status']
+                    ])
+
+                measure_table = Table(measure_data, colWidths=[2.5*inch, 1.5*inch, 1.2*inch, 0.8*inch])
+                measure_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1F4788')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                    ('FONTSIZE', (0, 1), (-1, -1), 9),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9f9f9')])
+                ]))
+                story.append(measure_table)
             story.append(Spacer(1, 0.3*inch))
 
             # Next steps
@@ -237,7 +251,35 @@ async def generate_class_report(
             students = student_result.scalars().all()
 
             if not students:
-                raise HTTPException(status_code=404, detail="No students found in this class")
+                # Create a simple PDF indicating no students in class
+                pdf_buffer = BytesIO()
+                doc = SimpleDocTemplate(pdf_buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+
+                styles = getSampleStyleSheet()
+                title_style = ParagraphStyle(
+                    'CustomTitle',
+                    parent=styles['Heading1'],
+                    fontSize=24,
+                    textColor=colors.HexColor('#1F4788'),
+                    spaceAfter=30,
+                    alignment=1
+                )
+
+                story = []
+                story.append(Paragraph("Class Engagement Report", title_style))
+                story.append(Spacer(1, 0.2*inch))
+                story.append(Paragraph(f"Class: {class_obj.class_name} ({class_code})", styles['Normal']))
+                story.append(Spacer(1, 0.2*inch))
+                story.append(Paragraph("No students found in this class.", styles['Normal']))
+
+                doc.build(story)
+                pdf_buffer.seek(0)
+
+                return FileResponse(
+                    BytesIO(pdf_buffer.getvalue()),
+                    media_type="application/pdf",
+                    headers={"Content-Disposition": f"attachment; filename=class_report_{class_code}.pdf"}
+                )
 
             # Create PDF in memory
             pdf_buffer = BytesIO()
@@ -321,11 +363,19 @@ async def generate_class_report(
                 class_avg_perf /= students_with_data
                 class_avg_attendance /= students_with_data
 
+            if students_with_data == 0:
+                # No observation data message
+                story.append(Paragraph(
+                    "<b>⚠️ Note:</b> No observation data available for any students in this class.",
+                    ParagraphStyle('Warning', parent=styles['Normal'], textColor=colors.HexColor('#B8860B'), fontSize=11)
+                ))
+                story.append(Spacer(1, 0.2*inch))
+
             stats_data = [
                 ["Total Students:", str(total_students)],
                 ["Students with Data:", str(students_with_data)],
-                ["Class Average Achievement:", CalculationService.format_percentage(class_avg_perf)],
-                ["Class Average Attendance:", CalculationService.format_percentage(class_avg_attendance)]
+                ["Class Average Achievement:", CalculationService.format_percentage(class_avg_perf) if students_with_data > 0 else "N/A"],
+                ["Class Average Attendance:", CalculationService.format_percentage(class_avg_attendance) if students_with_data > 0 else "N/A"]
             ]
             stats_table = Table(stats_data, colWidths=[2*inch, 3.5*inch])
             stats_table.setStyle(TableStyle([
@@ -343,34 +393,40 @@ async def generate_class_report(
             # Student rankings
             story.append(Paragraph("Student Performance Rankings", heading_style))
 
-            # Sort by performance descending
-            sorted_students = sorted(student_summaries, key=lambda x: x['performance'], reverse=True)
+            if not student_summaries:
+                story.append(Paragraph(
+                    "<i>No students in class.</i>",
+                    styles['Normal']
+                ))
+            else:
+                # Sort by performance descending
+                sorted_students = sorted(student_summaries, key=lambda x: x['performance'], reverse=True)
 
-            student_data = [["Rank", "Student Name", "Achievement %", "Attendance %", "Band"]]
-            for idx, student in enumerate(sorted_students, 1):
-                student_data.append([
-                    str(idx),
-                    student['name'][:20],
-                    CalculationService.format_percentage(student['performance']),
-                    CalculationService.format_percentage(student['attendance']),
-                    student['band']
-                ])
+                student_data = [["Rank", "Student Name", "Achievement %", "Attendance %", "Band"]]
+                for idx, student in enumerate(sorted_students, 1):
+                    student_data.append([
+                        str(idx),
+                        student['name'][:20],
+                        CalculationService.format_percentage(student['performance']) if student['performance'] > 0 else "N/A",
+                        CalculationService.format_percentage(student['attendance']) if student['attendance'] > 0 else "N/A",
+                        student['band']
+                    ])
 
-            student_table = Table(student_data, colWidths=[0.6*inch, 2.2*inch, 1.2*inch, 1.2*inch, 1.4*inch])
-            student_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1F4788')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('ALIGN', (1, 1), (1, -1), 'LEFT'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('FONTSIZE', (0, 1), (-1, -1), 9),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9f9f9')])
-            ]))
-            story.append(student_table)
+                student_table = Table(student_data, colWidths=[0.6*inch, 2.2*inch, 1.2*inch, 1.2*inch, 1.4*inch])
+                student_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1F4788')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('ALIGN', (1, 1), (1, -1), 'LEFT'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                    ('FONTSIZE', (0, 1), (-1, -1), 9),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9f9f9')])
+                ]))
+                story.append(student_table)
 
             # Build PDF
             doc.build(story)
