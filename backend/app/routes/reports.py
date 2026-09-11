@@ -115,44 +115,45 @@ async def generate_student_report(
             story.append(Paragraph(info_text, styles['Normal']))
             story.append(Spacer(1, 0.2*inch))
 
-            # Key Metrics - 4 colored boxes in a row
-            metrics_data = [
-                [
-                    f"<b>Achievement %</b><br/><br/><font size=20><b>{CalculationService.format_percentage(overall_perf)}</b></font>",
-                    f"<b>Performance Band</b><br/><br/><font size=16><b>{band_name}</b></font>",
-                    f"<b>Attendance %</b><br/><br/><font size=20><b>{CalculationService.format_percentage(attendance)}</b></font>",
-                    f"<b>Observations</b><br/><br/><font size=16><b>{days_observed} days</b></font>"
-                ]
-            ]
-            metrics_table = Table(metrics_data, colWidths=[1.35*inch, 1.35*inch, 1.35*inch, 1.35*inch])
-
+            # Key Metrics - 4 colored boxes
             # Determine color based on performance
             if overall_perf and overall_perf >= 80:
-                primary_color = colors.HexColor('#059669')  # Dark green
-                bg_color = colors.HexColor('#d1fae5')  # Light green
+                bg_color = colors.HexColor('#dcfce7')  # Light green
+                border_color = colors.HexColor('#059669')  # Dark green
             elif overall_perf and overall_perf >= 60:
-                primary_color = colors.HexColor('#0369a1')  # Dark blue
-                bg_color = colors.HexColor('#cffafe')  # Light blue
+                bg_color = colors.HexColor('#dbeafe')  # Light blue
+                border_color = colors.HexColor('#0369a1')  # Dark blue
             else:
-                primary_color = colors.HexColor('#ca8a04')  # Dark yellow
-                bg_color = colors.HexColor('#fef08a')  # Light yellow
+                bg_color = colors.HexColor('#fef3c7')  # Light yellow
+                border_color = colors.HexColor('#ca8a04')  # Dark yellow
 
+            # Simple metric table with clean formatting
+            metrics_data = [
+                [
+                    "Achievement %\n\n" + CalculationService.format_percentage(overall_perf),
+                    "Performance Band\n\n" + band_name,
+                    "Attendance %\n\n" + CalculationService.format_percentage(attendance),
+                    "Observations\n\n" + str(days_observed) + " days"
+                ]
+            ]
+
+            metrics_table = Table(metrics_data, colWidths=[1.35*inch, 1.35*inch, 1.35*inch, 1.35*inch])
             metrics_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, -1), bg_color),
                 ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 11),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
                 ('TOPPADDING', (0, 0), (-1, -1), 15),
                 ('LEFTPADDING', (0, 0), (-1, -1), 10),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-                ('GRID', (0, 0), (-1, -1), 2, primary_color),
-                ('LINEWIDTH', (0, 0), (-1, -1), 2.5),
-                ('ROUNDED', (0, 0), (-1, -1), 5),
+                ('GRID', (0, 0), (-1, -1), 2, border_color),
+                ('LINEWIDTH', (0, 0), (-1, -1), 2),
             ]))
             story.append(metrics_table)
-            story.append(Spacer(1, 0.25*inch))
+            story.append(Spacer(1, 0.3*inch))
 
             # Measure breakdown with visual chart
             story.append(Paragraph("<font color='#1F4788'><b>Performance by Measure</b></font>", heading_style))
