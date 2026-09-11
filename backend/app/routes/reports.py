@@ -162,9 +162,9 @@ async def generate_student_report(
                 for m in measure_breakdown:
                     perf_pct = m['performance_percentage'] if m['performance_percentage'] is not None else 0
 
-                    # Create a visual bar using spaces and background
+                    # Create a visual bar using simple characters
                     bar_width = int(perf_pct / 5)  # 20 chars = 100%
-                    bar_text = "█" * bar_width + "░" * (20 - bar_width)
+                    bar_text = "#" * bar_width + "-" * (20 - bar_width)
 
                     measure_data.append([
                         m['measure'][:20],
