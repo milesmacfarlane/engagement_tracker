@@ -169,9 +169,42 @@ export default function StudentDetailsPage() {
               formatter={(value) => `${typeof value === 'number' ? value.toFixed(1) : value}%`}
               labelFormatter={(label) => `Measure: ${label}`}
             />
+            <Legend />
             <Bar dataKey="performance_percentage" fill="#3b82f6" name="Performance %" />
           </BarChart>
         </ResponsiveContainer>
+      </div>
+
+      {/* Attendance Breakdown Chart */}
+      <div className="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 className="text-xl font-bold text-gray-900 mb-6">Attendance Breakdown</h2>
+        <div className="flex justify-center">
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={[
+                  { name: 'Days Observed', value: data.days_observed, color: '#10b981' },
+                  { name: 'Days Absent', value: data.days_absent, color: '#ef4444' }
+                ]}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, value }) => `${name}: ${value}`}
+                outerRadius={100}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                <Cell fill="#10b981" />
+                <Cell fill="#ef4444" />
+              </Pie>
+              <Tooltip formatter={(value) => `${value} days`} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="mt-4 text-center">
+          <p className="text-gray-700"><strong>Total:</strong> {data.days_observed + data.days_absent} days</p>
+          <p className="text-gray-700"><strong>Attendance Rate:</strong> {data.attendance_rate !== null ? `${data.attendance_rate.toFixed(1)}%` : 'N/A'}</p>
+        </div>
       </div>
 
       {/* Performance by Measure Details */}
