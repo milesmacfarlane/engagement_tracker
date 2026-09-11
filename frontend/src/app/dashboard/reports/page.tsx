@@ -25,6 +25,7 @@ export default function ReportsPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
+    apiClient.loadToken();
     loadData();
   }, []);
 
