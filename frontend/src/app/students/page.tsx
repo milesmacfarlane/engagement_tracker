@@ -20,6 +20,9 @@ export default function StudentsPage() {
     primary_class: '',
   });
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showImport, setShowImport] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importLoading, setImportLoading] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -34,8 +37,10 @@ export default function StudentsPage() {
       ]);
       setStudents(studentRes.data);
       setClasses(classRes);
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to load data' });
+    } catch (error: any) {
+      console.error('Failed to load data:', error.response?.data || error.message);
+      const errorMsg = error.response?.data?.detail || error.message || 'Failed to load data';
+      setMessage({ type: 'error', text: errorMsg });
     } finally {
       setIsLoading(false);
     }
@@ -95,10 +100,54 @@ export default function StudentsPage() {
     setShowForm(true);
   };
 
+  const handleImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importFile) {
+      setMessage({ type: 'error', text: 'Please select a file' });
+      return;
+    }
+
+    try {
+      setImportLoading(true);
+      const formData = new FormData();
+      formData.append('file', importFile);
+
+      const response = await fetch('http://localhost:8000/api/students/bulk-import', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Import failed');
+      }
+
+      const result = await response.json();
+      setMessage({
+        type: 'success',
+        text: `Imported ${result.imported} students. ${result.total_errors > 0 ? `${result.total_errors} errors.` : ''}`,
+      });
+      await loadData();
+      setShowImport(false);
+      setImportFile(null);
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Import failed' });
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
   return (
     <div>
+      {/* Breadcrumb */}
+      <div className="text-sm text-gray-600 mb-4">
+        <a href="/dashboard" className="hover:text-blue-600">Dashboard</a> / <span className="text-gray-900">Students</span>
+      </div>
+
       <h1 className="text-3xl font-bold text-gray-900 mb-2">Students</h1>
-      <p className="text-gray-600 mb-6">Manage student roster</p>
+      <p className="text-gray-600 mb-6">Manage student roster. Add students individually or import from CSV.</p>
 
       {message && (
         <div
@@ -109,6 +158,51 @@ export default function StudentsPage() {
           }`}
         >
           {message.type === 'success' ? '✓' : '✗'} {message.text}
+        </div>
+      )}
+
+      {/* Import Section */}
+      {showImport && (
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            Import Students from CSV
+          </h2>
+          <form onSubmit={handleImport} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                CSV File (columns: student_id, name, primary_class)
+              </label>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Example: S001,John Doe,HIS20A
+              </p>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                type="submit"
+                disabled={importLoading || !importFile}
+                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg"
+              >
+                {importLoading ? 'Importing...' : 'Import'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowImport(false);
+                  setImportFile(null);
+                }}
+                className="px-4 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
@@ -191,20 +285,33 @@ export default function StudentsPage() {
           <h2 className="text-lg font-semibold text-gray-900">
             {students.length} Students
           </h2>
-          {!showForm && (
-            <button
-              onClick={() => setShowForm(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium"
-            >
-              Add Student
-            </button>
+          {!showForm && !showImport && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowImport(true)}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium"
+              >
+                Import CSV
+              </button>
+              <button
+                onClick={() => setShowForm(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium"
+              >
+                Add Student
+              </button>
+            </div>
           )}
         </div>
 
         {isLoading ? (
           <div className="p-6 text-center text-gray-500">Loading...</div>
         ) : students.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">No students found</div>
+          <div className="p-6 text-center">
+            <p className="text-gray-600 mb-4">No students found. Add students using the forms below.</p>
+            {classes.length === 0 && (
+              <p className="text-orange-600 mb-4">⚠️ Create classes first before adding students.</p>
+            )}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -253,6 +360,18 @@ export default function StudentsPage() {
           </div>
         )}
       </div>
+
+      {/* Next Steps */}
+      {students.length > 0 && !showForm && !showImport && (
+        <div className="mt-8 flex gap-4">
+          <a
+            href="/entry-log"
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium inline-block"
+          >
+            Next: Record Observations →
+          </a>
+        </div>
+      )}
     </div>
   );
 }

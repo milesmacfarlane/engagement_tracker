@@ -7,7 +7,7 @@ from sqlalchemy.orm import declarative_base
 # Database URL from environment
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@localhost:5432/engagement_tracker"
+    "postgresql+asyncpg://postgres:postgres@localhost:5433/engagement_tracker"
 )
 
 # Create async engine

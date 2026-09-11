@@ -83,8 +83,13 @@ export default function ClassesPage() {
 
   return (
     <div>
+      {/* Breadcrumb */}
+      <div className="text-sm text-gray-600 mb-4">
+        <a href="/dashboard" className="hover:text-blue-600">Dashboard</a> / <span className="text-gray-900">Classes</span>
+      </div>
+
       <h1 className="text-3xl font-bold text-gray-900 mb-2">Classes</h1>
-      <p className="text-gray-600 mb-6">Manage classes and sections</p>
+      <p className="text-gray-600 mb-6">Manage classes and sections. Create classes first, then add students.</p>
 
       {message && (
         <div
@@ -160,7 +165,17 @@ export default function ClassesPage() {
         {isLoading ? (
           <div className="text-center text-gray-500 col-span-full py-12">Loading...</div>
         ) : classes.length === 0 ? (
-          <div className="text-center text-gray-500 col-span-full py-12">No classes found</div>
+          <div className="col-span-full">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
+              <p className="text-gray-600 mb-4">No classes yet. Create your first class to get started.</p>
+              <button
+                onClick={() => setShowForm(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
+              >
+                Create First Class
+              </button>
+            </div>
+          </div>
         ) : (
           classes.map((cls) => (
             <div key={cls.class_code} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition">
@@ -195,13 +210,19 @@ export default function ClassesPage() {
       </div>
 
       {!showForm && classes.length > 0 && (
-        <div className="mt-8">
+        <div className="mt-8 flex gap-4">
           <button
             onClick={() => setShowForm(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
           >
             Add Class
           </button>
+          <a
+            href="/students"
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium inline-block"
+          >
+            Next: Add Students →
+          </a>
         </div>
       )}
     </div>
