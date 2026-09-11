@@ -72,6 +72,7 @@ async def generate_student_report(
             measure_breakdown = await CalculationService.get_student_measure_breakdown(session, student_id)
             attendance = await CalculationService.calculate_attendance_rate(session, student_id)
             days_observed = await CalculationService.get_total_observation_days(session, student_id)
+            days_absent = await CalculationService.get_days_absent(session, student_id)
 
             has_data = overall_perf is not None and overall_perf > 0
 
@@ -91,73 +92,68 @@ async def generate_student_report(
             title_style = ParagraphStyle(
                 'CustomTitle',
                 parent=styles['Heading1'],
-                fontSize=24,
-                textColor=colors.HexColor('#1F4788'),
-                spaceAfter=30,
+                fontSize=20,
+                textColor=colors.black,
+                spaceAfter=12,
                 alignment=1  # Center
             )
             heading_style = ParagraphStyle(
                 'CustomHeading',
                 parent=styles['Heading2'],
-                fontSize=14,
-                textColor=colors.HexColor('#1F4788'),
-                spaceAfter=12
+                fontSize=12,
+                textColor=colors.black,
+                spaceAfter=10,
+                fontName='Helvetica-Bold'
             )
 
             story = []
 
-            # Professional header with title and student info
-            story.append(Paragraph("<font size=20 color='#1F4788'><b>Student Engagement Report</b></font>", styles['Heading1']))
+            # Title
+            story.append(Paragraph("STUDENT ENGAGEMENT REPORT", title_style))
             story.append(Spacer(1, 0.15*inch))
 
-            # Student info in compact format
-            info_text = f"<b>{student.name}</b> | ID: {student.student_id} | Class: {student.primary_class} | Generated: {datetime.now().strftime('%Y-%m-%d')}"
-            story.append(Paragraph(info_text, styles['Normal']))
+            # Header info table
+            header_data = [
+                ["Student Name:", student.name, "Student ID:", student.student_id],
+                ["Primary Class:", student.primary_class, "Report Date:", datetime.now().strftime('%Y-%m-%d')]
+            ]
+            header_table = Table(header_data, colWidths=[1.2*inch, 2*inch, 1.2*inch, 2*inch])
+            header_table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+            ]))
+            story.append(header_table)
             story.append(Spacer(1, 0.2*inch))
 
-            # Key Metrics - 4 colored boxes
-            # Determine color based on performance
-            if overall_perf and overall_perf >= 80:
-                bg_color = colors.HexColor('#dcfce7')  # Light green
-                border_color = colors.HexColor('#059669')  # Dark green
-            elif overall_perf and overall_perf >= 60:
-                bg_color = colors.HexColor('#dbeafe')  # Light blue
-                border_color = colors.HexColor('#0369a1')  # Dark blue
-            else:
-                bg_color = colors.HexColor('#fef3c7')  # Light yellow
-                border_color = colors.HexColor('#ca8a04')  # Dark yellow
+            # Performance Summary
+            story.append(Paragraph("PERFORMANCE SUMMARY", heading_style))
 
-            # Simple metric table with clean formatting
-            metrics_data = [
-                [
-                    "Achievement %\n\n" + CalculationService.format_percentage(overall_perf),
-                    "Performance Band\n\n" + band_name,
-                    "Attendance %\n\n" + CalculationService.format_percentage(attendance),
-                    "Observations\n\n" + str(days_observed) + " days"
-                ]
+            perf_summary = [
+                ["Attendance Rate:", CalculationService.format_percentage(attendance), "Days Present:", f"{days_observed}/{days_observed + days_absent}"],
+                ["Achievement %:", CalculationService.format_percentage(overall_perf), "Performance Band:", band_name],
+                ["Behaviors Observed (1s):", str(ones or 0), "Not Observed (0s):", str(zeros or 0)],
+                ["Days Absent:", str(days_absent or 0), "Valid Observations:", str((ones or 0) + (zeros or 0))]
             ]
 
-            metrics_table = Table(metrics_data, colWidths=[1.35*inch, 1.35*inch, 1.35*inch, 1.35*inch])
-            metrics_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, -1), bg_color),
-                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            perf_table = Table(perf_summary, colWidths=[1.5*inch, 1.2*inch, 1.5*inch, 1.2*inch])
+            perf_table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 11),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
-                ('TOPPADDING', (0, 0), (-1, -1), 15),
-                ('LEFTPADDING', (0, 0), (-1, -1), 10),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-                ('GRID', (0, 0), (-1, -1), 2, border_color),
-                ('LINEWIDTH', (0, 0), (-1, -1), 2),
+                ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+                ('ROWBACKGROUNDS', (0, 0), (-1, -1), [colors.white, colors.HexColor('#f5f5f5')])
             ]))
-            story.append(metrics_table)
-            story.append(Spacer(1, 0.3*inch))
+            story.append(perf_table)
+            story.append(Spacer(1, 0.2*inch))
 
-            # Measure breakdown with visual chart
-            story.append(Paragraph("<font color='#1F4788'><b>Performance by Measure</b></font>", heading_style))
-            story.append(Spacer(1, 0.1*inch))
+            # Engagement Measures - Detailed Breakdown
+            story.append(Paragraph("ENGAGEMENT MEASURES - DETAILED BREAKDOWN", heading_style))
 
             if not has_data or not measure_breakdown:
                 story.append(Paragraph(
@@ -166,62 +162,48 @@ async def generate_student_report(
                 ))
             else:
                 try:
-                    # Create measure chart with color-coded performance bars
-                    measure_data = [["Measure", "Performance", "Band"]]
+                    # Create detailed measure table matching Streamlit format
+                    measure_data = [["Engagement Measure", "Total", "1s", "0s", "N/A", "Valid", "Perf %", "Band"]]
 
                     for m in measure_breakdown:
                         perf_pct = m.get('performance_percentage', 0) or 0
                         band = m.get('band', 'N/A')
-
-                        # Create a visual bar using simple characters
-                        bar_width = int(perf_pct / 5)  # 20 chars = 100%
-                        bar_text = "#" * bar_width + "-" * (20 - bar_width)
+                        ones_obs = m.get('ones_observed', 0)
+                        zeros_obs = m.get('zeros_not_observed', 0)
+                        not_applicable = m.get('not_applicable', 0)
+                        total = ones_obs + zeros_obs + not_applicable
 
                         measure_data.append([
-                            m.get('measure', 'Unknown')[:20],
-                            f"{bar_text} {CalculationService.format_percentage(perf_pct)}",
+                            m.get('measure', 'Unknown')[:22],
+                            str(total),
+                            str(ones_obs),
+                            str(zeros_obs),
+                            str(not_applicable),
+                            str(ones_obs + zeros_obs),
+                            f"{perf_pct:.1f}%",
                             band
                         ])
 
-                    measure_table = Table(measure_data, colWidths=[2.2*inch, 2.3*inch, 1.5*inch])
+                    measure_table = Table(measure_data, colWidths=[2.2*inch, 0.45*inch, 0.45*inch, 0.45*inch, 0.45*inch, 0.5*inch, 0.55*inch, 1*inch])
 
-                    # Professional styling for measure table
+                    # Professional styling
                     style_list = [
-                        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1F4788')),
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#333333')),
                         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
                         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
                         ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
                         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                        ('FONTNAME', (2, 1), (2, -1), 'Helvetica-Bold'),
-                        ('FONTSIZE', (0, 0), (-1, 0), 11),
-                        ('FONTSIZE', (0, 1), (-1, -1), 10),
-                        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                        ('TOPPADDING', (0, 0), (-1, -1), 8),
-                        ('LEFTPADDING', (0, 0), (-1, -1), 8),
-                        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-                        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#ddd')),
-                        ('LINEWIDTH', (0, 0), (-1, 0), 2),
-                        ('LINEABOVE', (0, 0), (-1, 0), 2, colors.HexColor('#1F4788')),
+                        ('FONTNAME', (-1, 1), (-1, -1), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0, 0), (-1, 0), 9),
+                        ('FONTSIZE', (0, 1), (-1, -1), 9),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                        ('TOPPADDING', (0, 0), (-1, -1), 6),
+                        ('LEFTPADDING', (0, 0), (0, -1), 6),
+                        ('RIGHTPADDING', (-1, 0), (-1, -1), 6),
+                        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+                        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9f9f9')])
                     ]
-
-                    # Color-code rows by performance band
-                    for idx, m in enumerate(measure_breakdown, 1):
-                        band = m.get('band', 'N/A')
-                        if band == 'Exemplary':
-                            color = colors.HexColor('#ecfdf5')  # Very light green
-                        elif band == 'Proficient':
-                            color = colors.HexColor('#f0f9ff')  # Very light blue
-                        elif band == 'Developing':
-                            color = colors.HexColor('#fefce8')  # Very light yellow
-                        elif band == 'Emerging':
-                            color = colors.HexColor('#fff7ed')  # Very light orange
-                        else:
-                            color = colors.HexColor('#fef2f2')  # Very light red
-
-                        style_list.append(('BACKGROUND', (0, idx), (-1, idx), color))
-                        # Add a left border stripe for visual interest
-                        style_list.append(('LEFTPADDING', (0, idx), (0, idx), 12))
 
                     measure_table.setStyle(TableStyle(style_list))
                     story.append(measure_table)
@@ -231,11 +213,61 @@ async def generate_student_report(
                         f"<i>Could not display measure breakdown: {str(e)}</i>",
                         styles['Normal']
                     ))
-            story.append(Spacer(1, 0.3*inch))
 
-            # Next steps
-            story.append(Paragraph("Recommended Next Steps", heading_style))
+            story.append(Spacer(1, 0.2*inch))
+
+            # Top Strengths and Focus Areas
+            if has_data and measure_breakdown:
+                try:
+                    # Sort measures by performance
+                    sorted_measures = sorted(measure_breakdown, key=lambda x: x.get('performance_percentage', 0) or 0, reverse=True)
+
+                    # Top strengths (top 3)
+                    top_strengths = sorted_measures[:3]
+
+                    # Focus areas (below 75%)
+                    focus_areas = [m for m in sorted_measures if (m.get('performance_percentage', 0) or 0) < 75]
+
+                    two_col_data = []
+
+                    # Left column: Top Strengths
+                    left_content = ["TOP STRENGTHS"]
+                    for idx, m in enumerate(top_strengths, 1):
+                        perf_pct = m.get('performance_percentage', 0) or 0
+                        left_content.append(f"{idx}. {m.get('measure', 'Unknown')} - {perf_pct:.1f}%")
+
+                    # Right column: Focus Areas
+                    right_content = ["FOCUS AREAS (Below 75%)"]
+                    if focus_areas:
+                        for idx, m in enumerate(focus_areas, 1):
+                            perf_pct = m.get('performance_percentage', 0) or 0
+                            right_content.append(f"{idx}. {m.get('measure', 'Unknown')} - {perf_pct:.1f}%")
+                    else:
+                        right_content.append("No focus areas - all measures at or above 75%!")
+
+                    # Build two-column layout
+                    left_text = "\n".join(left_content)
+                    right_text = "\n".join(right_content)
+
+                    two_col_table = Table([
+                        [Paragraph(left_text.replace("\n", "<br/>"), styles['Normal']),
+                         Paragraph(right_text.replace("\n", "<br/>"), styles['Normal'])]
+                    ], colWidths=[3.25*inch, 3.25*inch])
+                    two_col_table.setStyle(TableStyle([
+                        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+                        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f9f9f9')),
+                    ]))
+                    story.append(two_col_table)
+                    story.append(Spacer(1, 0.2*inch))
+                except Exception as e:
+                    logger.error(f"Error creating strengths/focus areas: {str(e)}", exc_info=True)
+
+            # Recommended Next Steps
+            story.append(Paragraph("RECOMMENDED NEXT STEPS", heading_style))
             story.append(Paragraph(next_steps, styles['Normal']))
+            story.append(Spacer(1, 0.1*inch))
+            story.append(Paragraph(f"<i>Report Period: All observations</i>", ParagraphStyle('Italic', parent=styles['Normal'], fontSize=9, textColor=colors.grey)))
 
             # Build PDF
             doc.build(story)
@@ -243,7 +275,6 @@ async def generate_student_report(
 
             pdf_data = pdf_buffer.getvalue()
             # Write to temp file for FileResponse
-            import tempfile
             with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
                 tmp.write(pdf_data)
                 tmp_path = tmp.name
