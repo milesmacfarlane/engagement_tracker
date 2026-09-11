@@ -225,6 +225,66 @@ async def generate_student_report(
 
             story.append(Spacer(1, 0.2*inch))
 
+            # Performance by Measure Chart
+            if has_data and measure_breakdown:
+                story.append(Paragraph("PERFORMANCE BY MEASURE", heading_style))
+                try:
+                    # Create bar chart for measures
+                    perf_drawing = Drawing(6.5*inch, 2.2*inch)
+                    perf_chart = VerticalBarChart()
+
+                    measure_names = [m.get('measure', 'Unknown')[:15] for m in measure_breakdown]
+                    measure_perfs = [m.get('performance_percentage', 0) or 0 for m in measure_breakdown]
+
+                    perf_chart.data = [measure_perfs]
+                    perf_chart.categoryAxis.categoryNames = measure_names
+                    perf_chart.categoryAxis.labels.angle = 45
+                    perf_chart.categoryAxis.labels.fontSize = 8
+                    perf_chart.valueAxis.valueMax = 100
+                    perf_chart.valueAxis.valueMin = 0
+                    perf_chart.width = 5.8*inch
+                    perf_chart.height = 2*inch
+                    perf_chart.x = 0.4*inch
+                    perf_chart.y = 0.1*inch
+
+                    # Color bars based on performance
+                    perf_chart.bars[0].fillColor = colors.HexColor('#3b82f6')
+
+                    perf_drawing.add(perf_chart)
+                    story.append(perf_drawing)
+                    story.append(Spacer(1, 0.2*inch))
+                except Exception as e:
+                    logger.error(f"Error creating performance chart: {str(e)}", exc_info=True)
+                    story.append(Paragraph(f"<i>Could not display chart</i>", styles['Normal']))
+                    story.append(Spacer(1, 0.2*inch))
+
+            # Attendance Breakdown Chart
+            if has_data and days_observed > 0:
+                story.append(Paragraph("ATTENDANCE BREAKDOWN", heading_style))
+                try:
+                    att_drawing = Drawing(4*inch, 2.5*inch)
+                    att_pie = Pie()
+
+                    att_pie.data = [days_observed, days_absent]
+                    att_pie.labels = [f"Present\n({days_observed})", f"Absent\n({days_absent})"]
+                    att_pie.width = 3.5*inch
+                    att_pie.height = 2.2*inch
+                    att_pie.x = 0.2*inch
+                    att_pie.y = 0.1*inch
+
+                    att_pie.slices.strokeWidth = 1
+                    att_pie.slices.strokeColor = colors.white
+                    att_pie.slices[0].fillColor = colors.HexColor('#10b981')
+                    att_pie.slices[1].fillColor = colors.HexColor('#ef4444')
+
+                    att_drawing.add(att_pie)
+                    story.append(att_drawing)
+                    story.append(Spacer(1, 0.2*inch))
+                except Exception as e:
+                    logger.error(f"Error creating attendance chart: {str(e)}", exc_info=True)
+                    story.append(Paragraph(f"<i>Could not display chart</i>", styles['Normal']))
+                    story.append(Spacer(1, 0.2*inch))
+
             # Top Strengths and Focus Areas
             if has_data and measure_breakdown:
                 try:
