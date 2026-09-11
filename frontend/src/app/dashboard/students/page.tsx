@@ -347,6 +347,12 @@ export default function StudentsPage() {
                     <td className="px-6 py-3 text-sm text-gray-900">{student.name}</td>
                     <td className="px-6 py-3 text-sm text-gray-900">{student.primary_class}</td>
                     <td className="px-6 py-3 text-right space-x-2">
+                      <a
+                        href={`/dashboard/student-details?id=${student.student_id}`}
+                        className="text-blue-600 hover:text-blue-700 font-medium text-sm"
+                      >
+                        View Details
+                      </a>
                       <button
                         onClick={() => handleEdit(student)}
                         className="text-blue-600 hover:text-blue-700 font-medium text-sm"

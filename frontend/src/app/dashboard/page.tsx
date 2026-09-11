@@ -60,8 +60,8 @@ export default function DashboardPage() {
           {classes.map((classData) => (
             <Link
               key={classData.class_code}
-              href={`/dashboard/class/${classData.class_code}`}
-              className="bg-white rounded-lg shadow hover:shadow-lg transition p-6"
+              href={`/dashboard/class-details?code=${classData.class_code}`}
+              className="bg-white rounded-lg shadow hover:shadow-lg transition p-6 cursor-pointer"
             >
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 {classData.class_name}
