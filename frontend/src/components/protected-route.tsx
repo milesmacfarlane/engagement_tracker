@@ -10,16 +10,28 @@ import { useAuthStore } from '@/lib/auth-store';
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated());
+  const { token } = useAuthStore();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login');
-    }
-  }, [isAuthenticated, router]);
+    // Initialize auth on mount
+    useAuthStore.getState().initialize();
+  }, []);
 
-  if (!isAuthenticated) {
-    return null;
+  useEffect(() => {
+    // Check if authenticated after initialization
+    const checkAuth = async () => {
+      const { token: currentToken } = useAuthStore.getState();
+      if (!currentToken) {
+        router.push('/login');
+      }
+    };
+
+    checkAuth();
+  }, [router]);
+
+  // Show loading until we know auth status
+  if (!token) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
 
   return <>{children}</>;
