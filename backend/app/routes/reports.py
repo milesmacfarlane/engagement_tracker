@@ -499,6 +499,114 @@ async def generate_class_report(
             story.append(stats_table)
             story.append(Spacer(1, 0.2*inch))
 
+            # Performance Distribution Visualization
+            if students_with_data > 0:
+                story.append(Paragraph("PERFORMANCE DISTRIBUTION", heading_style))
+
+                # Calculate performance band distribution
+                band_counts = {}
+                for student in student_summaries:
+                    band = student['band']
+                    band_counts[band] = band_counts.get(band, 0) + 1
+
+                # Create pie chart
+                try:
+                    pie_data = [(count, band) for band, count in sorted(band_counts.items(), key=lambda x: x[1], reverse=True)]
+
+                    if pie_data:
+                        drawing = Drawing(4*inch, 2.5*inch)
+                        pie = Pie()
+                        pie.data = [count for count, _ in pie_data]
+                        pie.labels = [f"{band}\n({count})" for count, band in pie_data]
+                        pie.width = 3.5*inch
+                        pie.height = 2.2*inch
+                        pie.x = 0.2*inch
+                        pie.y = 0.1*inch
+
+                        # Color map for bands
+                        band_colors = {
+                            'Exemplary': colors.HexColor('#059669'),
+                            'Proficient': colors.HexColor('#0369a1'),
+                            'Developing': colors.HexColor('#ca8a04'),
+                            'Emerging': colors.HexColor('#ea580c'),
+                            'Beginning': colors.HexColor('#dc2626'),
+                            'Needs Intensive Support': colors.HexColor('#7f1d1d'),
+                        }
+
+                        pie.slices.strokeWidth = 1
+                        pie.slices.strokeColor = colors.white
+                        for idx, (_, band) in enumerate(pie_data):
+                            pie.slices[idx].fillColor = band_colors.get(band, colors.grey)
+
+                        drawing.add(pie)
+                        story.append(drawing)
+                        story.append(Spacer(1, 0.1*inch))
+                except Exception as e:
+                    logger.error(f"Error creating pie chart: {str(e)}", exc_info=True)
+                    story.append(Paragraph(f"<i>Could not display chart: {str(e)}</i>", styles['Normal']))
+
+                story.append(Spacer(1, 0.2*inch))
+
+                # Performance Level Breakdown
+                story.append(Paragraph("ACHIEVEMENT LEVEL BREAKDOWN", heading_style))
+
+                try:
+                    # Sort students by achievement and count in ranges
+                    perf_ranges = {
+                        '90-100%': 0,
+                        '80-89%': 0,
+                        '70-79%': 0,
+                        '60-69%': 0,
+                        '50-59%': 0,
+                        '<50%': 0,
+                        'No Data': 0
+                    }
+
+                    for student in student_summaries:
+                        perf = student['performance']
+                        if perf == 0 and student['band'] == 'N/A':
+                            perf_ranges['No Data'] += 1
+                        elif perf >= 90:
+                            perf_ranges['90-100%'] += 1
+                        elif perf >= 80:
+                            perf_ranges['80-89%'] += 1
+                        elif perf >= 70:
+                            perf_ranges['70-79%'] += 1
+                        elif perf >= 60:
+                            perf_ranges['60-69%'] += 1
+                        elif perf >= 50:
+                            perf_ranges['50-59%'] += 1
+                        else:
+                            perf_ranges['<50%'] += 1
+
+                    # Create bar chart
+                    breakdown_drawing = Drawing(6.5*inch, 2*inch)
+                    chart = VerticalBarChart()
+
+                    # Prepare data: only include non-zero categories
+                    categories = [k for k, v in perf_ranges.items() if v > 0 or k == '90-100%']
+                    chart_data = [[perf_ranges.get(cat, 0) for cat in categories]]
+
+                    chart.data = chart_data
+                    chart.categoryAxis.categoryNames = categories
+                    chart.categoryAxis.labels.angle = 45
+                    chart.valueAxis.valueMax = max(chart_data[0]) if chart_data[0] else 1
+                    chart.width = 5.5*inch
+                    chart.height = 1.8*inch
+                    chart.x = 0.5*inch
+                    chart.y = 0.1*inch
+
+                    # Set bar color
+                    chart.bars[0].fillColor = colors.HexColor('#3b82f6')
+
+                    breakdown_drawing.add(chart)
+                    story.append(breakdown_drawing)
+                    story.append(Spacer(1, 0.2*inch))
+                except Exception as e:
+                    logger.error(f"Error creating bar chart: {str(e)}", exc_info=True)
+                    story.append(Paragraph(f"<i>Could not display breakdown chart</i>", styles['Normal']))
+                    story.append(Spacer(1, 0.2*inch))
+
             # Student rankings
             story.append(Paragraph("STUDENT PERFORMANCE RANKINGS", heading_style))
 
