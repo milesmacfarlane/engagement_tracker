@@ -211,6 +211,36 @@ export default function StudentDetailsPage() {
 
       {/* Actions */}
       <div className="flex gap-4">
+        <button
+          onClick={async () => {
+            try {
+              const response = await fetch(
+                `http://localhost:8000/api/reports/student/${studentId}?format=pdf`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+                  },
+                }
+              );
+              if (!response.ok) throw new Error('Failed to generate report');
+
+              const blob = await response.blob();
+              const url = window.URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `student_report_${data.student_name.replace(/\s+/g, '_')}.pdf`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              window.URL.revokeObjectURL(url);
+            } catch (error) {
+              alert('Failed to download report');
+            }
+          }}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
+        >
+          📥 Download PDF Report
+        </button>
         <Link
           href="/dashboard/students"
           className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium inline-block"

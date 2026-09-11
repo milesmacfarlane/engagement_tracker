@@ -78,7 +78,9 @@ export default function ReportsPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate report');
+        const errorText = await response.text();
+        console.error('Report generation error:', response.status, errorText);
+        throw new Error(`Failed to generate report: ${response.status} ${errorText}`);
       }
 
       // Create blob and download
