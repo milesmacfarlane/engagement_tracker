@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api-client';
+import { useAuthStore } from '@/lib/auth-store';
 import Link from 'next/link';
 
 interface Student {
@@ -16,6 +17,7 @@ interface ClassInfo {
 }
 
 export default function ReportsPage() {
+  const { isAuthenticated } = useAuthStore();
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,8 +27,9 @@ export default function ReportsPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
-    apiClient.loadToken();
-    loadData();
+    if (isAuthenticated()) {
+      loadData();
+    }
   }, []);
 
   const loadData = async () => {
