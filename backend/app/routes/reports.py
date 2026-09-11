@@ -574,12 +574,12 @@ async def generate_class_report(
                     pie_data = [(count, band) for band, count in sorted(band_counts.items(), key=lambda x: x[1], reverse=True)]
 
                     if pie_data:
-                        drawing = Drawing(4*inch, 2.5*inch)
+                        drawing = Drawing(3*inch, 1.8*inch)
                         pie = Pie()
                         pie.data = [count for count, _ in pie_data]
                         pie.labels = [f"{band}\n({count})" for count, band in pie_data]
-                        pie.width = 3.5*inch
-                        pie.height = 2.2*inch
+                        pie.width = 2.5*inch
+                        pie.height = 1.5*inch
                         pie.x = 0.2*inch
                         pie.y = 0.1*inch
 
@@ -666,6 +666,29 @@ async def generate_class_report(
                     logger.error(f"Error creating bar chart: {str(e)}", exc_info=True)
                     story.append(Paragraph(f"<i>Could not display breakdown chart</i>", styles['Normal']))
                     story.append(Spacer(1, 0.2*inch))
+
+            # Page break before student rankings
+            story.append(PageBreak())
+
+            # Repeat class header on second page
+            story.append(Paragraph("CLASS ENGAGEMENT REPORT", title_style))
+            story.append(Spacer(1, 0.15*inch))
+
+            header_data_page2 = [
+                ["Class Name:", class_obj.class_name, "Class Code:", class_code],
+                ["Report Date:", datetime.now().strftime('%Y-%m-%d'), "", ""]
+            ]
+            header_table_page2 = Table(header_data_page2, colWidths=[1.2*inch, 2*inch, 1.2*inch, 2*inch])
+            header_table_page2.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+            ]))
+            story.append(header_table_page2)
+            story.append(Spacer(1, 0.2*inch))
 
             # Student rankings
             story.append(Paragraph("STUDENT PERFORMANCE RANKINGS", heading_style))
