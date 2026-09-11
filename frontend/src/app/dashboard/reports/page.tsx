@@ -23,6 +23,7 @@ export default function ReportsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<'student' | 'class'>('student');
   const [selectedId, setSelectedId] = useState('');
+  const [selectedName, setSelectedName] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -88,7 +89,8 @@ export default function ReportsPage() {
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.download = `${selectedReport}_report_${selectedId}.pdf`;
+      const safeName = selectedName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
+      link.download = `${selectedReport}_report_${safeName}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -150,8 +152,10 @@ export default function ReportsPage() {
               <select
                 value={selectedReport === 'student' ? selectedId : ''}
                 onChange={(e) => {
+                  const student = students.find(s => s.student_id === e.target.value);
                   setSelectedReport('student');
                   setSelectedId(e.target.value);
+                  setSelectedName(student?.name || '');
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
               >
@@ -204,8 +208,10 @@ export default function ReportsPage() {
               <select
                 value={selectedReport === 'class' ? selectedId : ''}
                 onChange={(e) => {
+                  const classObj = classes.find(c => c.class_code === e.target.value);
                   setSelectedReport('class');
                   setSelectedId(e.target.value);
+                  setSelectedName(classObj?.class_name || '');
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
               >
