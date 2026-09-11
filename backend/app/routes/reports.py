@@ -126,25 +126,43 @@ async def generate_student_report(
             story.append(info_table)
             story.append(Spacer(1, 0.3*inch))
 
-            # Overall performance
+            # Overall performance with color-coded boxes
             story.append(Paragraph("Overall Performance", heading_style))
-            perf_data = [
-                ["Overall Achievement %:", CalculationService.format_percentage(overall_perf)],
-                ["Performance Band:", band_name],
-                ["Attendance Rate:", CalculationService.format_percentage(attendance)],
-                ["Days Observed:", str(days_observed)]
+
+            # Create 4 metrics boxes
+            metrics_data = [
+                [
+                    f"<b>Achievement %</b><br/><font size=18><b>{CalculationService.format_percentage(overall_perf)}</b></font>",
+                    f"<b>Performance Band</b><br/><font size=14><b>{band_name}</b></font>",
+                    f"<b>Attendance %</b><br/><font size=18><b>{CalculationService.format_percentage(attendance)}</b></font>",
+                    f"<b>Days Observed</b><br/><font size=14><b>{days_observed}</b></font>"
+                ]
             ]
-            perf_table = Table(perf_data, colWidths=[2*inch, 3.5*inch])
-            perf_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f0f0f0')),
+            metrics_table = Table(metrics_data, colWidths=[1.4*inch, 1.4*inch, 1.4*inch, 1.4*inch])
+
+            # Color the boxes based on achievement
+            if overall_perf and overall_perf >= 80:
+                box_color = colors.HexColor('#dcfce7')  # Green
+            elif overall_perf and overall_perf >= 60:
+                box_color = colors.HexColor('#dbeafe')  # Blue
+            else:
+                box_color = colors.HexColor('#fef3c7')  # Yellow
+
+            metrics_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), box_color),
                 ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                ('GRID', (0, 0), (-1, -1), 1, colors.grey)
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+                ('TOPPADDING', (0, 0), (-1, -1), 12),
+                ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1F4788')),
+                ('LINEWIDTH', (0, 0), (-1, -1), 2),
             ]))
-            story.append(perf_table)
+            story.append(metrics_table)
             story.append(Spacer(1, 0.3*inch))
 
             # Measure breakdown with visual chart
@@ -180,13 +198,19 @@ async def generate_student_report(
                     style_list = [
                         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1F4788')),
                         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                        ('ALIGN', (2, 0), (2, -1), 'CENTER'),
+                        ('ALIGN', (0, 1), (0, -1), 'LEFT'),
+                        ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
                         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                        ('FONTSIZE', (0, 0), (-1, -1), 9),
-                        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                        ('TOPPADDING', (0, 0), (-1, -1), 8),
-                        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                        ('FONTNAME', (2, 1), (2, -1), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0, 0), (-1, 0), 10),
+                        ('FONTSIZE', (0, 1), (-1, -1), 9),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                        ('TOPPADDING', (0, 0), (-1, -1), 6),
+                        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cccccc')),
+                        ('LINEWIDTH', (0, 0), (-1, 0), 1.5),
+                        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9f9f9')]),
                     ]
 
                     # Add row colors based on band
@@ -203,6 +227,7 @@ async def generate_student_report(
                         else:
                             color = colors.HexColor('#fecaca')  # Light red
 
+                        # Override the background for this row with the band color
                         style_list.append(('BACKGROUND', (0, idx), (-1, idx), color))
 
                     measure_table.setStyle(TableStyle(style_list))
