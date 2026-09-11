@@ -147,8 +147,8 @@ async def generate_student_report(
             story.append(perf_table)
             story.append(Spacer(1, 0.3*inch))
 
-            # Measure breakdown
-            story.append(Paragraph("Measure Breakdown", heading_style))
+            # Measure breakdown with visual chart
+            story.append(Paragraph("Performance by Measure", heading_style))
 
             if not has_data or not measure_breakdown:
                 story.append(Paragraph(
@@ -156,28 +156,54 @@ async def generate_student_report(
                     styles['Normal']
                 ))
             else:
-                measure_data = [["Measure", "Performance %", "Band", "Status"]]
+                # Create measure chart with color-coded performance bars
+                measure_data = [["Measure", "Performance", "Band"]]
+
                 for m in measure_breakdown:
+                    perf_pct = m['performance_percentage'] if m['performance_percentage'] is not None else 0
+
+                    # Create a visual bar using spaces and background
+                    bar_width = int(perf_pct / 5)  # 20 chars = 100%
+                    bar_text = "█" * bar_width + "░" * (20 - bar_width)
+
                     measure_data.append([
-                        m['measure'][:25],
-                        CalculationService.format_percentage(m['performance_percentage']),
-                        m['band'],
-                        m['status']
+                        m['measure'][:20],
+                        f"{bar_text} {CalculationService.format_percentage(perf_pct)}",
+                        m['band']
                     ])
 
-                measure_table = Table(measure_data, colWidths=[2.5*inch, 1.5*inch, 1.2*inch, 0.8*inch])
-                measure_table.setStyle(TableStyle([
+                measure_table = Table(measure_data, colWidths=[2.0*inch, 2.5*inch, 1.5*inch])
+
+                # Color rows based on performance band
+                style_list = [
                     ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1F4788')),
                     ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('ALIGN', (2, 0), (2, -1), 'CENTER'),
                     ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, 0), 10),
-                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                    ('FONTSIZE', (0, 1), (-1, -1), 9),
-                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9f9f9')])
-                ]))
+                    ('FONTSIZE', (0, 0), (-1, -1), 9),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                    ('TOPPADDING', (0, 0), (-1, -1), 8),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ]
+
+                # Add row colors based on band
+                for idx, m in enumerate(measure_breakdown, 1):
+                    band = m['band']
+                    if band == 'Exemplary':
+                        color = colors.HexColor('#dcfce7')  # Light green
+                    elif band == 'Proficient':
+                        color = colors.HexColor('#dbeafe')  # Light blue
+                    elif band == 'Developing':
+                        color = colors.HexColor('#fef3c7')  # Light yellow
+                    elif band == 'Emerging':
+                        color = colors.HexColor('#fed7aa')  # Light orange
+                    else:
+                        color = colors.HexColor('#fecaca')  # Light red
+
+                    style_list.append(('BACKGROUND', (0, idx), (-1, idx), color))
+
+                measure_table.setStyle(TableStyle(style_list))
                 story.append(measure_table)
             story.append(Spacer(1, 0.3*inch))
 
