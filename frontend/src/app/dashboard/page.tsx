@@ -39,14 +39,14 @@ export default function DashboardPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-      <p className="text-gray-600 mb-8">Overview of all classes and students</p>
+      <p className="text-gray-700 mb-8">Overview of all classes and students</p>
 
       {isLoading ? (
         <div className="text-center py-12">
-          <p className="text-gray-500">Loading classes...</p>
+          <p className="text-gray-700">Loading classes...</p>
         </div>
       ) : classes.length === 0 ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
+        <div className="bg-blue-100 border border-blue-300 rounded-lg p-8 text-center">
           <p className="text-gray-700 mb-4">No classes found. Create one to get started.</p>
           <Link
             href="/classes"
@@ -69,15 +69,15 @@ export default function DashboardPage() {
 
               <div className="space-y-3 mb-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Total Students:</span>
+                  <span className="text-gray-700">Total Students:</span>
                   <span className="font-medium">{classData.total_students}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">With Observations:</span>
+                  <span className="text-gray-700">With Observations:</span>
                   <span className="font-medium">{classData.students_with_observations}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Average Achievement:</span>
+                  <span className="text-gray-700">Average Achievement:</span>
                   <span className="font-medium">
                     {classData.average_performance !== null
                       ? `${classData.average_performance.toFixed(1)}%`
@@ -87,7 +87,7 @@ export default function DashboardPage() {
               </div>
 
               <div className="pt-4 border-t">
-                <p className="text-xs text-gray-500">Click to view class details</p>
+                <p className="text-xs text-gray-700">Click to view class details</p>
               </div>
             </Link>
           ))}
@@ -127,7 +127,7 @@ export default function DashboardPage() {
 
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">System Information</h3>
-          <div className="space-y-2 text-sm text-gray-600">
+          <div className="space-y-2 text-sm text-gray-700">
             <p>Total Classes: <span className="font-medium">{classes.length}</span></p>
             <p>Total Students: <span className="font-medium">
               {classes.reduce((sum, c) => sum + c.total_students, 0)}

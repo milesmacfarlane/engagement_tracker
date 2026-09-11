@@ -178,14 +178,14 @@ export default function EntryLogPage() {
   ).length;
 
   return (
-    <div>
+    <div className="bg-white text-black">
       {/* Breadcrumb */}
-      <div className="text-sm text-gray-900 mb-4">
+      <div className="text-sm text-black mb-4">
         <a href="/dashboard" className="hover:text-blue-600">Dashboard</a> / <span className="text-gray-900">Quick Entry Log</span>
       </div>
 
       <h1 className="text-3xl font-bold text-gray-900 mb-2">Quick Entry Log</h1>
-      <p className="text-gray-900 mb-6">
+      <p className="text-gray-700 mb-6">
         Record observations using keyboard shortcuts: press 1, 0, or - for each behavior
       </p>
 
