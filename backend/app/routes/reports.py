@@ -347,12 +347,14 @@ async def generate_class_report(
                 attendance = await CalculationService.calculate_attendance_rate(
                     session, student_id=student.student_id
                 )
-                band_name, _ = CalculationService.get_performance_band(perf)
 
                 if perf is not None:
+                    band_name, _ = CalculationService.get_performance_band(perf)
                     students_with_data += 1
                     class_avg_perf += perf
                     class_avg_attendance += attendance
+                else:
+                    band_name = "N/A"
 
                 student_summaries.append({
                     'name': student.name,
