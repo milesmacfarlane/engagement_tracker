@@ -163,7 +163,16 @@ async def generate_student_report(
             else:
                 try:
                     # Create detailed measure table matching Streamlit format
-                    measure_data = [["Engagement Measure", "Total", "1s", "0s", "N/A", "Valid", "Perf %", "Band"]]
+                    measure_data = [[
+                        Paragraph("<b>Engagement Measure</b>", styles['Normal']),
+                        Paragraph("<b>Total</b>", styles['Normal']),
+                        Paragraph("<b>1s</b>", styles['Normal']),
+                        Paragraph("<b>0s</b>", styles['Normal']),
+                        Paragraph("<b>N/A</b>", styles['Normal']),
+                        Paragraph("<b>Valid</b>", styles['Normal']),
+                        Paragraph("<b>Perf %</b>", styles['Normal']),
+                        Paragraph("<b>Band</b>", styles['Normal'])
+                    ]]
 
                     for m in measure_breakdown:
                         perf_pct = m.get('performance_percentage', 0) or 0
@@ -174,14 +183,14 @@ async def generate_student_report(
                         total = ones_obs + zeros_obs + not_applicable
 
                         measure_data.append([
-                            m.get('measure', 'Unknown')[:22],
-                            str(total),
-                            str(ones_obs),
-                            str(zeros_obs),
-                            str(not_applicable),
-                            str(ones_obs + zeros_obs),
-                            f"{perf_pct:.1f}%",
-                            band
+                            Paragraph(m.get('measure', 'Unknown'), styles['Normal']),
+                            Paragraph(str(total), styles['Normal']),
+                            Paragraph(str(ones_obs), styles['Normal']),
+                            Paragraph(str(zeros_obs), styles['Normal']),
+                            Paragraph(str(not_applicable), styles['Normal']),
+                            Paragraph(str(ones_obs + zeros_obs), styles['Normal']),
+                            Paragraph(f"{perf_pct:.1f}%", styles['Normal']),
+                            Paragraph(band, styles['Normal'])
                         ])
 
                     measure_table = Table(measure_data, colWidths=[2.2*inch, 0.45*inch, 0.45*inch, 0.45*inch, 0.45*inch, 0.5*inch, 0.55*inch, 1*inch])
