@@ -190,11 +190,13 @@ async def generate_student_report(
             pdf_buffer.seek(0)
 
             pdf_data = pdf_buffer.getvalue()
+            # Use student name in filename, sanitize it
+            safe_name = student.name.replace(" ", "_").replace("/", "_")
             return StreamingResponse(
                 BytesIO(pdf_data),
                 media_type="application/pdf",
                 headers={
-                    "Content-Disposition": f"attachment; filename=student_report_{student_id}.pdf",
+                    "Content-Disposition": f"attachment; filename=student_report_{safe_name}.pdf",
                     "Access-Control-Allow-Origin": "*",
                     "Access-Control-Allow-Methods": "GET, OPTIONS",
                     "Access-Control-Allow-Headers": "Content-Type, Authorization",
@@ -449,10 +451,18 @@ async def generate_class_report(
             doc.build(story)
             pdf_buffer.seek(0)
 
-            return FileResponse(
-                BytesIO(pdf_buffer.getvalue()),
+            pdf_data = pdf_buffer.getvalue()
+            # Use class name in filename, sanitize it
+            safe_name = class_obj.class_name.replace(" ", "_").replace("/", "_")
+            return StreamingResponse(
+                BytesIO(pdf_data),
                 media_type="application/pdf",
-                headers={"Content-Disposition": f"attachment; filename=class_report_{class_code}.pdf"}
+                headers={
+                    "Content-Disposition": f"attachment; filename=class_report_{safe_name}.pdf",
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                }
             )
 
         except Exception as e:
