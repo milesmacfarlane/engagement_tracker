@@ -62,7 +62,14 @@ export default function ReportsPage() {
 
     try {
       setIsGenerating(true);
+
+      // Debug logging
+      console.log('Token:', token);
+      console.log('Selected Report:', selectedReport);
+      console.log('Selected ID:', selectedId);
+
       const url = `http://localhost:8000/api/reports/${selectedReport}/${selectedId}?format=pdf`;
+      console.log('Fetch URL:', url);
 
       const response = await fetch(url, {
         headers: {
