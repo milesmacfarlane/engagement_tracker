@@ -36,7 +36,7 @@ export default function ReportsPage() {
     try {
       setIsLoading(true);
       const [studentRes, classRes] = await Promise.all([
-        apiClient.listStudents(0, 1000),
+        apiClient.listStudents(0, 100),
         apiClient.listClasses(),
       ]);
 
