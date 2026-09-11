@@ -17,7 +17,9 @@ import os
 from app.database import get_session
 from app.models import Student, Class
 from app.services import CalculationService
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/student/{student_id}")
@@ -194,6 +196,7 @@ async def generate_student_report(
             )
 
         except Exception as e:
+            logger.error(f"Error generating PDF report: {str(e)}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
 
 @router.get("/class/{class_code}")
@@ -439,4 +442,5 @@ async def generate_class_report(
             )
 
         except Exception as e:
+            logger.error(f"Error generating PDF report: {str(e)}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
