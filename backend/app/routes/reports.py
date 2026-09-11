@@ -139,7 +139,7 @@ async def generate_student_report(
                 ["Days Absent:", str(days_absent or 0), "Valid Observations:", str((ones or 0) + (zeros or 0))]
             ]
 
-            perf_table = Table(perf_summary, colWidths=[1.5*inch, 1.2*inch, 1.5*inch, 1.2*inch])
+            perf_table = Table(perf_summary, colWidths=[1.8*inch, 1.2*inch, 1.8*inch, 1.2*inch])
             perf_table.setStyle(TableStyle([
                 ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
                 ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
