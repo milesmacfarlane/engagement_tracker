@@ -363,16 +363,16 @@ async def generate_class_report(
                 title_style = ParagraphStyle(
                     'CustomTitle',
                     parent=styles['Heading1'],
-                    fontSize=24,
-                    textColor=colors.HexColor('#1F4788'),
-                    spaceAfter=30,
+                    fontSize=20,
+                    textColor=colors.black,
+                    spaceAfter=20,
                     alignment=1
                 )
 
                 story = []
-                story.append(Paragraph("Class Engagement Report", title_style))
+                story.append(Paragraph("CLASS ENGAGEMENT REPORT", title_style))
                 story.append(Spacer(1, 0.2*inch))
-                story.append(Paragraph(f"Class: {class_obj.class_name} ({class_code})", styles['Normal']))
+                story.append(Paragraph(f"<b>Class:</b> {class_obj.class_name} ({class_code})", styles['Normal']))
                 story.append(Spacer(1, 0.2*inch))
                 story.append(Paragraph("No students found in this class.", styles['Normal']))
 
@@ -380,15 +380,15 @@ async def generate_class_report(
                 pdf_buffer.seek(0)
 
                 pdf_data = pdf_buffer.getvalue()
-                return StreamingResponse(
-                    BytesIO(pdf_data),
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
+                    tmp.write(pdf_data)
+                    tmp_path = tmp.name
+
+                safe_name = class_obj.class_name.replace(" ", "_").replace("/", "_")
+                return FileResponse(
+                    tmp_path,
                     media_type="application/pdf",
-                    headers={
-                        "Content-Disposition": f"attachment; filename=class_report_{class_code}.pdf",
-                        "Access-Control-Allow-Origin": "*",
-                        "Access-Control-Allow-Methods": "GET, OPTIONS",
-                        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-                    }
+                    filename=f"class_report_{safe_name}.pdf"
                 )
 
             # Create PDF in memory
@@ -400,46 +400,45 @@ async def generate_class_report(
             title_style = ParagraphStyle(
                 'CustomTitle',
                 parent=styles['Heading1'],
-                fontSize=24,
-                textColor=colors.HexColor('#1F4788'),
-                spaceAfter=30,
+                fontSize=20,
+                textColor=colors.black,
+                spaceAfter=12,
                 alignment=1  # Center
             )
             heading_style = ParagraphStyle(
                 'CustomHeading',
                 parent=styles['Heading2'],
-                fontSize=14,
-                textColor=colors.HexColor('#1F4788'),
-                spaceAfter=12
+                fontSize=12,
+                textColor=colors.black,
+                spaceAfter=10,
+                fontName='Helvetica-Bold'
             )
 
             story = []
 
             # Title
-            story.append(Paragraph("Class Engagement Report", title_style))
+            story.append(Paragraph("CLASS ENGAGEMENT REPORT", title_style))
+            story.append(Spacer(1, 0.15*inch))
+
+            # Header info table
+            header_data = [
+                ["Class Name:", class_obj.class_name, "Class Code:", class_code],
+                ["Report Date:", datetime.now().strftime('%Y-%m-%d'), "", ""]
+            ]
+            header_table = Table(header_data, colWidths=[1.2*inch, 2*inch, 1.2*inch, 2*inch])
+            header_table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+            ]))
+            story.append(header_table)
             story.append(Spacer(1, 0.2*inch))
 
-            # Class info
-            info_data = [
-                ["Class Name:", class_obj.class_name],
-                ["Class Code:", class_code],
-                ["Generated:", datetime.now().strftime("%Y-%m-%d %H:%M")]
-            ]
-            info_table = Table(info_data, colWidths=[2*inch, 3.5*inch])
-            info_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f0f0f0')),
-                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                ('GRID', (0, 0), (-1, -1), 1, colors.grey)
-            ]))
-            story.append(info_table)
-            story.append(Spacer(1, 0.3*inch))
-
-            # Class statistics
-            story.append(Paragraph("Class Statistics", heading_style))
+            # Class Statistics Summary
+            story.append(Paragraph("CLASS STATISTICS SUMMARY", heading_style))
 
             total_students = len(students)
             students_with_data = 0
@@ -484,26 +483,24 @@ async def generate_class_report(
                 story.append(Spacer(1, 0.2*inch))
 
             stats_data = [
-                ["Total Students:", str(total_students)],
-                ["Students with Data:", str(students_with_data)],
-                ["Class Average Achievement:", CalculationService.format_percentage(class_avg_perf) if students_with_data > 0 else "N/A"],
-                ["Class Average Attendance:", CalculationService.format_percentage(class_avg_attendance) if students_with_data > 0 else "N/A"]
+                ["Total Students:", str(total_students), "Students with Data:", str(students_with_data)],
+                ["Class Average Achievement:", CalculationService.format_percentage(class_avg_perf) if students_with_data > 0 else "N/A", "Class Average Attendance:", CalculationService.format_percentage(class_avg_attendance) if students_with_data > 0 else "N/A"]
             ]
-            stats_table = Table(stats_data, colWidths=[2*inch, 3.5*inch])
+            stats_table = Table(stats_data, colWidths=[1.8*inch, 1.2*inch, 1.8*inch, 1.2*inch])
             stats_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f0f0f0')),
-                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                 ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
                 ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                ('GRID', (0, 0), (-1, -1), 1, colors.grey)
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+                ('ROWBACKGROUNDS', (0, 0), (-1, -1), [colors.white, colors.HexColor('#f5f5f5')])
             ]))
             story.append(stats_table)
-            story.append(Spacer(1, 0.3*inch))
+            story.append(Spacer(1, 0.2*inch))
 
             # Student rankings
-            story.append(Paragraph("Student Performance Rankings", heading_style))
+            story.append(Paragraph("STUDENT PERFORMANCE RANKINGS", heading_style))
 
             if not student_summaries:
                 story.append(Paragraph(
@@ -514,28 +511,34 @@ async def generate_class_report(
                 # Sort by performance descending
                 sorted_students = sorted(student_summaries, key=lambda x: x['performance'], reverse=True)
 
-                student_data = [["Rank", "Student Name", "Achievement %", "Attendance %", "Band"]]
+                student_data = [[
+                    Paragraph("<b>Rank</b>", styles['Normal']),
+                    Paragraph("<b>Student Name</b>", styles['Normal']),
+                    Paragraph("<b>Achievement %</b>", styles['Normal']),
+                    Paragraph("<b>Attendance %</b>", styles['Normal']),
+                    Paragraph("<b>Band</b>", styles['Normal'])
+                ]]
+
                 for idx, student in enumerate(sorted_students, 1):
                     student_data.append([
-                        str(idx),
-                        student['name'][:20],
-                        CalculationService.format_percentage(student['performance']) if student['performance'] > 0 else "N/A",
-                        CalculationService.format_percentage(student['attendance']) if student['attendance'] > 0 else "N/A",
-                        student['band']
+                        Paragraph(str(idx), styles['Normal']),
+                        Paragraph(student['name'], styles['Normal']),
+                        Paragraph(CalculationService.format_percentage(student['performance']) if student['performance'] > 0 else "N/A", styles['Normal']),
+                        Paragraph(CalculationService.format_percentage(student['attendance']) if student['attendance'] > 0 else "N/A", styles['Normal']),
+                        Paragraph(student['band'], styles['Normal'])
                     ])
 
                 student_table = Table(student_data, colWidths=[0.6*inch, 2.2*inch, 1.2*inch, 1.2*inch, 1.4*inch])
                 student_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1F4788')),
-                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#808080')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
                     ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                     ('ALIGN', (1, 1), (1, -1), 'LEFT'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, 0), 10),
-                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                    ('FONTSIZE', (0, 0), (-1, 0), 9),
                     ('FONTSIZE', (0, 1), (-1, -1), 9),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+                    ('TOPPADDING', (0, 0), (-1, 0), 8),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.grey),
                     ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9f9f9')])
                 ]))
                 story.append(student_table)
@@ -545,17 +548,17 @@ async def generate_class_report(
             pdf_buffer.seek(0)
 
             pdf_data = pdf_buffer.getvalue()
+            # Write to temp file for FileResponse
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
+                tmp.write(pdf_data)
+                tmp_path = tmp.name
+
             # Use class name in filename, sanitize it
             safe_name = class_obj.class_name.replace(" ", "_").replace("/", "_")
-            return StreamingResponse(
-                BytesIO(pdf_data),
+            return FileResponse(
+                tmp_path,
                 media_type="application/pdf",
-                headers={
-                    "Content-Disposition": f"attachment; filename=class_report_{safe_name}.pdf",
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "GET, OPTIONS",
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-                }
+                filename=f"class_report_{safe_name}.pdf"
             )
 
         except Exception as e:
