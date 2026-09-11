@@ -107,7 +107,7 @@ class ApiClient {
     };
     if (classCode) params.class_code = classCode;
 
-    const response = await this.instance.get('/students', { params });
+    const response = await this.instance.get('/students/', { params });
     return response.data;
   }
 
@@ -150,7 +150,7 @@ class ApiClient {
 
   // Classes
   async listClasses() {
-    const response = await this.instance.get('/classes');
+    const response = await this.instance.get('/classes/');
     return response.data;
   }
 
