@@ -1,7 +1,7 @@
 """Report generation routes."""
 
 from fastapi import APIRouter, HTTPException, Depends, Query
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import select
 from io import BytesIO
@@ -224,13 +224,19 @@ async def generate_student_report(
             pdf_buffer.seek(0)
 
             pdf_data = pdf_buffer.getvalue()
+            # Write to temp file for FileResponse
+            import tempfile
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
+                tmp.write(pdf_data)
+                tmp_path = tmp.name
+
             # Use student name in filename, sanitize it
             safe_name = student.name.replace(" ", "_").replace("/", "_")
-            return StreamingResponse(
-                BytesIO(pdf_data),
+            return FileResponse(
+                tmp_path,
                 media_type="application/pdf",
+                filename=f"student_report_{safe_name}.pdf",
                 headers={
-                    "Content-Disposition": f"attachment; filename=student_report_{safe_name}.pdf",
                     "Access-Control-Allow-Origin": "*",
                     "Access-Control-Allow-Methods": "GET, OPTIONS",
                     "Access-Control-Allow-Headers": "Content-Type, Authorization",
