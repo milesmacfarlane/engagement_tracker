@@ -1,7 +1,7 @@
 """Report generation routes."""
 
 from fastapi import APIRouter, HTTPException, Depends, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import select
 from io import BytesIO
@@ -189,10 +189,16 @@ async def generate_student_report(
             doc.build(story)
             pdf_buffer.seek(0)
 
-            return FileResponse(
-                BytesIO(pdf_buffer.getvalue()),
+            pdf_data = pdf_buffer.getvalue()
+            return StreamingResponse(
+                BytesIO(pdf_data),
                 media_type="application/pdf",
-                headers={"Content-Disposition": f"attachment; filename=student_report_{student_id}.pdf"}
+                headers={
+                    "Content-Disposition": f"attachment; filename=student_report_{student_id}.pdf",
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                }
             )
 
         except Exception as e:
@@ -278,10 +284,16 @@ async def generate_class_report(
                 doc.build(story)
                 pdf_buffer.seek(0)
 
-                return FileResponse(
-                    BytesIO(pdf_buffer.getvalue()),
+                pdf_data = pdf_buffer.getvalue()
+                return StreamingResponse(
+                    BytesIO(pdf_data),
                     media_type="application/pdf",
-                    headers={"Content-Disposition": f"attachment; filename=class_report_{class_code}.pdf"}
+                    headers={
+                        "Content-Disposition": f"attachment; filename=class_report_{class_code}.pdf",
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Methods": "GET, OPTIONS",
+                        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                    }
                 )
 
             # Create PDF in memory
