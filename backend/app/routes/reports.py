@@ -197,7 +197,7 @@ async def generate_student_report(
 
                     # Professional styling
                     style_list = [
-                        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#333333')),
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#808080')),
                         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
                         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
                         ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
