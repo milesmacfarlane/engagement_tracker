@@ -235,12 +235,7 @@ async def generate_student_report(
             return FileResponse(
                 tmp_path,
                 media_type="application/pdf",
-                filename=f"student_report_{safe_name}.pdf",
-                headers={
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "GET, OPTIONS",
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-                }
+                filename=f"student_report_{safe_name}.pdf"
             )
 
         except Exception as e:
