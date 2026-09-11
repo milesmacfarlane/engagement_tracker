@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
-import { useAuthStore } from '@/lib/auth-store';
 import Link from 'next/link';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -31,7 +30,6 @@ interface StudentAnalytics {
 }
 
 export default function StudentDetailsPage() {
-  const { isAuthenticated } = useAuthStore();
   const searchParams = useSearchParams();
   const studentId = searchParams.get('id');
   const [data, setData] = useState<StudentAnalytics | null>(null);
@@ -39,7 +37,7 @@ export default function StudentDetailsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!studentId || !isAuthenticated()) return;
+    if (!studentId) return;
 
     const loadData = async () => {
       try {
@@ -54,7 +52,7 @@ export default function StudentDetailsPage() {
     };
 
     loadData();
-  }, [studentId, isAuthenticated()]);
+  }, [studentId]);
 
   if (!studentId) {
     return (
