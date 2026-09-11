@@ -57,8 +57,9 @@ async def create_class(
 ):
     """Create new class."""
     # Check if class already exists
-    existing = select(Class).where(Class.class_code == class_obj.class_code)
-    if await session.execute(existing):
+    existing_query = select(Class).where(Class.class_code == class_obj.class_code)
+    existing_result = await session.execute(existing_query)
+    if existing_result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Class already exists")
 
     new_class = Class(

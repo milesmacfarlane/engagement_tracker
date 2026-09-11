@@ -80,8 +80,9 @@ async def create_student(
         raise HTTPException(status_code=404, detail="Class not found")
 
     # Check if student already exists
-    existing = select(Student).where(Student.student_id == student.student_id)
-    if await session.execute(existing):
+    existing_query = select(Student).where(Student.student_id == student.student_id)
+    existing_result = await session.execute(existing_query)
+    if existing_result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Student already exists")
 
     new_student = Student(
@@ -168,8 +169,9 @@ async def bulk_import_students(
                 continue
 
             # Check if student exists
-            existing = select(Student).where(Student.student_id == row['student_id'])
-            if await session.execute(existing):
+            existing_query = select(Student).where(Student.student_id == row['student_id'])
+            existing_result = await session.execute(existing_query)
+            if existing_result.scalar_one_or_none():
                 errors.append(f"Student {row['student_id']} already exists")
                 continue
 

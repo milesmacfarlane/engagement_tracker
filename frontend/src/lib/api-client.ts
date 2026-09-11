@@ -101,11 +101,11 @@ class ApiClient {
 
   // Students
   async listStudents(page: number = 0, limit: number = 10, classCode?: string) {
-    const params = new URLSearchParams({
-      skip: String(page * limit),
-      limit: String(limit),
-    });
-    if (classCode) params.append('class_code', classCode);
+    const params: any = {
+      skip: page * limit,
+      limit: limit,
+    };
+    if (classCode) params.class_code = classCode;
 
     const response = await this.instance.get('/students', { params });
     return response.data;
@@ -181,10 +181,10 @@ class ApiClient {
 
   // Observations
   async listObservations(dateFilter?: string, classCode?: string, studentId?: string) {
-    const params = new URLSearchParams();
-    if (dateFilter) params.append('date_filter', dateFilter);
-    if (classCode) params.append('class_code', classCode);
-    if (studentId) params.append('student_id', studentId);
+    const params: any = {};
+    if (dateFilter) params.date_filter = dateFilter;
+    if (classCode) params.class_code = classCode;
+    if (studentId) params.student_id = studentId;
 
     const response = await this.instance.get('/observations', { params });
     return response.data;
@@ -198,9 +198,9 @@ class ApiClient {
   }
 
   async exportObservations(dateFilter?: string, classCode?: string) {
-    const params = new URLSearchParams();
-    if (dateFilter) params.append('date_filter', dateFilter);
-    if (classCode) params.append('class_code', classCode);
+    const params: any = {};
+    if (dateFilter) params.date_filter = dateFilter;
+    if (classCode) params.class_code = classCode;
 
     const response = await this.instance.get('/observations/export', {
       params,

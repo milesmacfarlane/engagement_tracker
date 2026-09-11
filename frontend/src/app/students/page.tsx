@@ -6,9 +6,11 @@
 
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api-client';
+import { useAuthStore } from '@/lib/auth-store';
 import { Student } from '@/lib/types';
 
 export default function StudentsPage() {
+  const { isAuthenticated, token } = useAuthStore();
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -25,21 +27,26 @@ export default function StudentsPage() {
   const [importLoading, setImportLoading] = useState(false);
 
   useEffect(() => {
-    loadData();
+    if (isAuthenticated()) {
+      loadData();
+    }
   }, []);
 
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [studentRes, classRes] = await Promise.all([
-        apiClient.listStudents(0, 1000),
-        apiClient.listClasses(),
-      ]);
-      setStudents(studentRes.data);
-      setClasses(classRes);
+      const studentRes = await apiClient.listStudents(0, 100);
+      const classRes = await apiClient.listClasses();
+
+      if (studentRes && studentRes.data) {
+        setStudents(studentRes.data);
+      }
+      if (classRes) {
+        setClasses(Array.isArray(classRes) ? classRes : classRes.data || []);
+      }
     } catch (error: any) {
-      console.error('Failed to load data:', error.response?.data || error.message);
-      const errorMsg = error.response?.data?.detail || error.message || 'Failed to load data';
+      console.error('Failed to load data:', error);
+      const errorMsg = error?.response?.data?.detail || error?.message || 'Failed to load data';
       setMessage({ type: 'error', text: errorMsg });
     } finally {
       setIsLoading(false);
@@ -142,12 +149,12 @@ export default function StudentsPage() {
   return (
     <div>
       {/* Breadcrumb */}
-      <div className="text-sm text-gray-600 mb-4">
+      <div className="text-sm text-gray-900 mb-4">
         <a href="/dashboard" className="hover:text-blue-600">Dashboard</a> / <span className="text-gray-900">Students</span>
       </div>
 
       <h1 className="text-3xl font-bold text-gray-900 mb-2">Students</h1>
-      <p className="text-gray-600 mb-6">Manage student roster. Add students individually or import from CSV.</p>
+      <p className="text-gray-900 mb-6">Manage student roster. Add students individually or import from CSV.</p>
 
       {message && (
         <div
@@ -176,9 +183,9 @@ export default function StudentsPage() {
                 type="file"
                 accept=".csv"
                 onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-600"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-700 mt-1">
                 Example: S001,John Doe,HIS20A
               </p>
             </div>
@@ -222,7 +229,7 @@ export default function StudentsPage() {
                 value={formData.student_id}
                 onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
                 disabled={!!editingId}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-600"
               />
             </div>
 
@@ -234,7 +241,7 @@ export default function StudentsPage() {
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-600"
               />
             </div>
 
@@ -245,7 +252,7 @@ export default function StudentsPage() {
               <select
                 value={formData.primary_class}
                 onChange={(e) => setFormData({ ...formData, primary_class: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-600"
               >
                 <option value="">Select a class</option>
                 {classes.map((c) => (
@@ -304,10 +311,10 @@ export default function StudentsPage() {
         </div>
 
         {isLoading ? (
-          <div className="p-6 text-center text-gray-500">Loading...</div>
+          <div className="p-6 text-center text-gray-700">Loading...</div>
         ) : students.length === 0 ? (
           <div className="p-6 text-center">
-            <p className="text-gray-600 mb-4">No students found. Add students using the forms below.</p>
+            <p className="text-gray-900 mb-4">No students found. Add students using the forms below.</p>
             {classes.length === 0 && (
               <p className="text-orange-600 mb-4">⚠️ Create classes first before adding students.</p>
             )}
@@ -337,8 +344,8 @@ export default function StudentsPage() {
                     <td className="px-6 py-3 text-sm text-gray-900 font-medium">
                       {student.student_id}
                     </td>
-                    <td className="px-6 py-3 text-sm text-gray-600">{student.name}</td>
-                    <td className="px-6 py-3 text-sm text-gray-600">{student.primary_class}</td>
+                    <td className="px-6 py-3 text-sm text-gray-900">{student.name}</td>
+                    <td className="px-6 py-3 text-sm text-gray-900">{student.primary_class}</td>
                     <td className="px-6 py-3 text-right space-x-2">
                       <button
                         onClick={() => handleEdit(student)}

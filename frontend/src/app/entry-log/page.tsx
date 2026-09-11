@@ -180,12 +180,12 @@ export default function EntryLogPage() {
   return (
     <div>
       {/* Breadcrumb */}
-      <div className="text-sm text-gray-600 mb-4">
+      <div className="text-sm text-gray-900 mb-4">
         <a href="/dashboard" className="hover:text-blue-600">Dashboard</a> / <span className="text-gray-900">Quick Entry Log</span>
       </div>
 
       <h1 className="text-3xl font-bold text-gray-900 mb-2">Quick Entry Log</h1>
-      <p className="text-gray-600 mb-6">
+      <p className="text-gray-900 mb-6">
         Record observations using keyboard shortcuts: press 1, 0, or - for each behavior
       </p>
 
@@ -200,7 +200,7 @@ export default function EntryLogPage() {
               type="date"
               value={observationDate}
               onChange={(e) => setObservationDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
             />
           </div>
 
@@ -211,7 +211,7 @@ export default function EntryLogPage() {
             <select
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
             >
               <option value="">Select a class</option>
               {classes.map((c) => (
@@ -235,7 +235,7 @@ export default function EntryLogPage() {
                   }}
                 />
               </div>
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-900">
                 {filledCount}/{gridData.length}
               </span>
             </div>
@@ -259,7 +259,7 @@ export default function EntryLogPage() {
       {/* Grid */}
       {isLoading ? (
         <div className="text-center py-12">
-          <p className="text-gray-500">Loading students...</p>
+          <p className="text-gray-700">Loading students...</p>
         </div>
       ) : gridData.length === 0 ? (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
@@ -342,15 +342,15 @@ export default function EntryLogPage() {
           <div className="mt-6 bg-gray-50 rounded-lg p-4">
             <div className="grid grid-cols-3 gap-4 mb-4">
               <div>
-                <p className="text-sm text-gray-600">Total Students</p>
+                <p className="text-sm text-gray-900">Total Students</p>
                 <p className="text-2xl font-bold text-gray-900">{gridData.length}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Recorded</p>
+                <p className="text-sm text-gray-900">Recorded</p>
                 <p className="text-2xl font-bold text-blue-600">{filledCount}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Absent</p>
+                <p className="text-sm text-gray-900">Absent</p>
                 <p className="text-2xl font-bold text-orange-600">{absentCount}</p>
               </div>
             </div>
