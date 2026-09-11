@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
 import Link from 'next/link';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface StudentSummary {
   student_id: string;
@@ -149,9 +150,40 @@ export default function ClassDetailsPage() {
         </div>
       </div>
 
+      {/* Performance Distribution Chart */}
+      <div className="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 className="text-xl font-bold text-gray-900 mb-6">Performance Band Distribution</h2>
+        <div className="flex justify-center">
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={Object.entries(data.performance_distribution)
+                  .filter(([_, count]) => count > 0)
+                  .map(([band, count]) => ({ name: band, value: count }))}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, value }) => `${name}: ${value}`}
+                outerRadius={100}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                <Cell fill="#10b981" />
+                <Cell fill="#3b82f6" />
+                <Cell fill="#f59e0b" />
+                <Cell fill="#ef6b3d" />
+                <Cell fill="#ef4444" />
+                <Cell fill="#991b1b" />
+              </Pie>
+              <Tooltip formatter={(value) => `${value} students`} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
       {/* Student Performance Table */}
       <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <h2 className="text-xl font-bold text-gray-900 mb-6">Student Performance</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-6">Student Performance Rankings</h2>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b">

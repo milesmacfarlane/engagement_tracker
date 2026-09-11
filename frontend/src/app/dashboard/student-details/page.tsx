@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
 import Link from 'next/link';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 interface MeasureStats {
   measure: string;
@@ -150,9 +151,32 @@ export default function StudentDetailsPage() {
         </div>
       </div>
 
-      {/* Performance by Measure */}
+      {/* Performance Chart by Measure */}
       <div className="bg-white rounded-lg shadow p-6 mb-8">
         <h2 className="text-xl font-bold text-gray-900 mb-6">Performance by Measure</h2>
+        <ResponsiveContainer width="100%" height={400}>
+          <BarChart data={data.performance_by_measure}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              dataKey="measure"
+              angle={-45}
+              textAnchor="end"
+              height={100}
+              tick={{ fontSize: 12 }}
+            />
+            <YAxis domain={[0, 100]} label={{ value: 'Performance %', angle: -90, position: 'insideLeft' }} />
+            <Tooltip
+              formatter={(value) => `${typeof value === 'number' ? value.toFixed(1) : value}%`}
+              labelFormatter={(label) => `Measure: ${label}`}
+            />
+            <Bar dataKey="performance_percentage" fill="#3b82f6" name="Performance %" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Performance by Measure Details */}
+      <div className="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 className="text-xl font-bold text-gray-900 mb-6">Detailed Measure Breakdown</h2>
         <div className="space-y-4">
           {data.performance_by_measure.map((measure) => (
             <div key={measure.measure} className="border border-gray-200 rounded-lg p-4">
