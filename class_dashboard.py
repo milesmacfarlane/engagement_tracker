@@ -137,6 +137,139 @@ def render():
     
     st.markdown("---")
     
+    # Engagement Patterns Section (NEW)
+    st.markdown("### 🎯 Class Engagement Patterns")
+    st.caption("Understanding attendance-achievement relationships and intervention priorities")
+    
+    # Get engagement insights
+    class_students = students_df[students_df['primary_class'] == selected_class]
+    insights = utils.get_engagement_insights(observations_df, class_students)
+    distribution = utils.get_class_engagement_distribution(observations_df, class_students)
+    
+    # Display key metrics
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric(
+            "Avg Effective Engagement",
+            f"{insights['avg_effective_engagement']:.1f}%",
+            help="Average Effective Engagement Score (accounts for both attendance and achievement)"
+        )
+    
+    with col2:
+        correlation = insights['correlation']
+        corr_interpretation = "Strong" if abs(correlation) > 0.7 else "Moderate" if abs(correlation) > 0.4 else "Weak"
+        st.metric(
+            "Attendance-Achievement Link",
+            f"{corr_interpretation} ({correlation:.2f})",
+            help="Correlation between attendance and achievement (-1 to 1)"
+        )
+    
+    with col3:
+        st.metric(
+            "Present but Disengaged ⚠️",
+            insights['present_but_disengaged_count'],
+            help="Students attending regularly but not engaging (high attendance, low achievement)"
+        )
+    
+    with col4:
+        st.metric(
+            "Engaged but Absent 📚",
+            insights['engaged_but_absent_count'],
+            help="Students engaged when present but poor attendance (low attendance, high achievement)"
+        )
+    
+    # Engagement type distribution
+    st.markdown("#### Student Type Distribution")
+    
+    dist_col1, dist_col2 = st.columns([2, 1])
+    
+    with dist_col1:
+        # Create DataFrame for visualization
+        dist_data = []
+        for category, count in distribution.items():
+            if count > 0:  # Only show categories with students
+                dist_data.append({'Type': category, 'Count': count})
+        
+        if dist_data:
+            dist_df = pd.DataFrame(dist_data)
+            
+            # Color mapping
+            color_map = {
+                'Exemplary': '#00B050',
+                'Present but Disengaged': '#FF9900',
+                'Engaged but Absent': '#FFC000',
+                'Critical Intervention Needed': '#FF0000',
+                'Developing - Focus Engagement': '#92D050',
+                'Developing - Focus Attendance': '#FFFF00',
+                'Unknown': '#D9D9D9'
+            }
+            
+            fig = px.bar(
+                dist_df,
+                x='Type',
+                y='Count',
+                color='Type',
+                color_discrete_map=color_map,
+                title="Students by Engagement Type"
+            )
+            fig.update_layout(showlegend=False, height=400)
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No engagement data available yet")
+    
+    with dist_col2:
+        st.markdown("**What This Means:**")
+        st.markdown("""
+        - **⭐ Exemplary:** Keep doing what works
+        - **⚠️ Present but Disengaged:** Focus on engagement strategies
+        - **📚 Engaged but Absent:** Address attendance barriers
+        - **🚨 Critical:** Comprehensive intervention needed
+        - **📈/📅 Developing:** Targeted support
+        """)
+    
+    # Primary barriers breakdown
+    st.markdown("#### Primary Barriers to Success")
+    
+    barrier_col1, barrier_col2 = st.columns([1, 2])
+    
+    with barrier_col1:
+        barriers = insights['primary_barrier_counts']
+        st.metric("Attendance Barriers", barriers.get('Attendance', 0))
+        st.metric("Engagement Barriers", barriers.get('Engagement', 0))
+        st.metric("Balanced (Both)", barriers.get('Balanced', 0))
+    
+    with barrier_col2:
+        st.markdown("""
+        **Intervention Priorities:**
+        
+        **If Attendance is primary barrier:**
+        - Contact families about attendance patterns
+        - Explore transportation/health/home barriers
+        - Consider alternative schedules or supports
+        
+        **If Engagement is primary barrier:**
+        - Review instructional strategies
+        - Check for learning difficulties
+        - Increase hands-on activities
+        - Build relationships and relevance
+        
+        **If Balanced (both issues):**
+        - Start with engagement (builds motivation)
+        - Then address attendance
+        - May need comprehensive support plan
+        """)
+    
+    # Average opportunity lost
+    if insights['opportunity_lost_avg'] > 10:
+        st.warning(f"""
+        ⚠️ **Significant Opportunity Lost:** On average, students in this class are losing 
+        {insights['opportunity_lost_avg']:.1f}% of their potential engagement due to absence. 
+        This suggests attendance interventions could have substantial impact.
+        """)
+    
+    st.markdown("---")
+    
     # Student performance table
     st.markdown("### 👥 Student Performance Table")
     

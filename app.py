@@ -9,10 +9,7 @@ across 9 key measures using a 1/0/- observation system.
 import streamlit as st
 import sys
 from pathlib import Path
-
-# Add pages directory to path
-pages_dir = Path(__file__).parent / 'pages'
-sys.path.insert(0, str(pages_dir))
+from sqlalchemy import text
 
 # Import database module first to initialize tables
 import database as db
@@ -104,12 +101,26 @@ def main():
     
     # Sidebar navigation
     with st.sidebar:
-        st.image("https://media.7oaks.org/media/Default/fgg/36/West20Kildonan20Logo.jpg",
-                width=100)
-    
+        st.image("https://via.placeholder.com/150x50/1F4788/FFFFFF?text=Engagement+Tracker", 
+                use_container_width=True)
+        
         st.markdown("---")
         
-
+        # Database health check
+        try:
+            engine = db.get_database_connection()
+            if engine:
+                with engine.connect() as conn:
+                    result = conn.execute(text("SELECT 1"))
+                    st.success("🟢 Database Online", icon="✅")
+            else:
+                st.error("🔴 Database Offline", icon="❌")
+        except Exception as e:
+            st.error("🔴 DB Connection Issue", icon="⚠️")
+            with st.expander("Error Details"):
+                st.code(str(e))
+        
+        st.markdown("---")
         
         # Navigation menu
         page = st.radio(
@@ -127,8 +138,6 @@ def main():
         st.markdown("---")
         
         # Quick stats in sidebar
-        import database as db
-        
         students_df = db.load_students()
         classes_df = db.load_classes()
         observations_df = db.load_observations()
@@ -144,6 +153,7 @@ def main():
         st.metric("Total Observations", len(observations_df))
         
         st.markdown("---")
+
         
         # Help section
         with st.expander("ℹ️ About"):
